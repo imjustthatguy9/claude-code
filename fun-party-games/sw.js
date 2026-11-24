@@ -2,12 +2,14 @@
 // Pages: network first (gives up after 4s), then the saved copy.
 // Icons and manifest: saved copy first. Nothing here can leave a page hanging.
 const CACHE = 'fpg-83c123594b';
-const FILES = ['./', './index.html', './fun-party-games.html', './manifest.webmanifest',
-  './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'];
+// The game page must be saved; icons and the manifest are nice to have.
+const CORE = ['./', './index.html', './fun-party-games.html'];
+const EXTRA = ['./manifest.webmanifest', './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE)
-    .then(c => c.addAll(FILES.map(f => new Request(f, { cache: 'reload' }))))
+    .then(c => c.addAll(CORE.map(f => new Request(f, { cache: 'reload' })))
+      .then(() => Promise.all(EXTRA.map(f => c.add(new Request(f, { cache: 'reload' })).catch(() => {})))))
     .then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
