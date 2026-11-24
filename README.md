@@ -35,7 +35,7 @@ Each day has up to **five prompts**, with **25 seconds** for each. Keep typing u
    ant
    ```
 
-   The first line is the question. After that come answer groups, one answer per line, separated by blank lines, deepest tier first. Stop early to leave the shallow tiers empty, or put `-` on its own to skip a tier. A `---` line starts another question. A preview shows where every answer will land before anything is filled in.
+   The first line is the question. After that come answer groups, one answer per line, separated by blank lines, deepest tier first. Put `[]` on its own line for a tier with nothing in it (a lone `-` works too), or stop early to leave the shallow tiers empty. A `---` line starts another question. A preview shows where every answer will land before anything is filled in.
 6. **Duplicates are cleaned up automatically.** If the same answer is in more than one tier, the **deepest tier keeps it** and the others are removed when you press Save Day. That includes near-duplicates: different capitals, punctuation, accents, "the/a/an", plurals ("cat"/"Cats"), and one-letter typos in words of 6+ letters ("Colombia"/"Columbia"). Short words have to match exactly, so different answers like "Iran" and "Iraq" are both kept. A copy listed twice in the same tier is also removed. While you edit, each tier box warns what will be removed, and a **Remove now** button cleans the prompt straight away. After saving, a summary lists everything that was removed. Paste-as-text previews show the cleanup too.
 7. Use **Test a guess** under each prompt to check where an answer would land, including any auto-correction.
 8. Press **Save Day**. This keeps your edits in your browser.

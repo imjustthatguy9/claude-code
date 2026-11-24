@@ -247,10 +247,11 @@
   //   mouse
   //                           ← …then Rare, Schooler, Too Clever, Plankton
   //
-  // A group that is just "-" or "none" leaves that tier empty. A line of
+  // A group that is just "[]" (or "-" / "none") leaves that tier empty. A line of
   // three or more dashes ("---") starts another question.
   const TEXT_ORDER = TIERS.map(t => t.key).reverse();   // nichion → plankton
-  const EMPTY_GROUP = /^(-|—|–|none|\(none\)|n\/a|empty)$/i;
+  const EMPTY_GROUP = /^(\[\s*\]|-|—|–|none|\(none\)|n\/a|empty)$/i;
+  const EMPTY_MARK = /^\[\s*\]$/;
 
   function cleanLine(line) {
     return line.replace(/^\s*(?:[-*•·]\s+|\d+[.)]\s+)/, '').trim();
@@ -277,7 +278,7 @@
       groups.forEach((g, i) => {
         if (i >= TEXT_ORDER.length) return;
         if (g.length === 1 && EMPTY_GROUP.test(g[0])) return;
-        answers[TEXT_ORDER[i]] = g.filter(Boolean);
+        answers[TEXT_ORDER[i]] = g.filter(a => a && !EMPTY_MARK.test(a));   // a stray [] is never an answer
       });
       if (groups.length > TEXT_ORDER.length) {
         warnings.push(`${groups.length - TEXT_ORDER.length} extra group${groups.length - TEXT_ORDER.length === 1 ? '' : 's'} after Plankton ignored`);
@@ -294,7 +295,7 @@
   function promptToText(p) {
     const groups = TEXT_ORDER.map(k => (p.answers[k] || []).filter(Boolean));
     while (groups.length && !groups[groups.length - 1].length) groups.pop();
-    return [p.text, ...groups.map(g => (g.length ? g.join('\n') : '-'))].join('\n\n');
+    return [p.text, ...groups.map(g => (g.length ? g.join('\n') : '[]'))].join('\n\n');
   }
 
 

@@ -40,7 +40,7 @@ test('warns on duplicates and on missing answers; round-trips', () => {
   assert.match(dup.notes[0], /“Cats” removed from Deep Cut — kept as “cat” in Nichion/);
   assert.match(parseQuestionText('Just a question')[0].warnings[0], /No answers/);
   const [q] = parseQuestionText('animals\n\nfox\n\n-\n\ndog\nant');
-  assert.equal(promptToText(q), 'animals\n\nfox\n\n-\n\ndog\nant');
+  assert.equal(promptToText(q), 'animals\n\nfox\n\n[]\n\ndog\nant');
 });
 
 test('dedupe keeps the deepest copy, handles near-duplicates and aliases', () => {
@@ -54,4 +54,19 @@ test('dedupe keeps the deepest copy, handles near-duplicates and aliases', () =>
     schooler: ['Iran', 'New York City | NYC'], clever: ['Big Apple'], plankton: ['Mars', 'Mary'],
   });
   assert.equal(removed.length, 6);
+});
+
+test('[] means a tier with nothing in it', () => {
+  const [q] = parseQuestionText('animals\n\n[]\n\ncat\nmouse\n\n[ ]\n\n[]\n\nant');
+  assert.deepEqual(q.answers.nichion, []);
+  assert.deepEqual(q.answers.deepcut, ['cat', 'mouse']);
+  assert.deepEqual(q.answers.rare, []);
+  assert.deepEqual(q.answers.schooler, []);
+  assert.deepEqual(q.answers.clever, ['ant']);
+  assert.deepEqual(q.answers.plankton, []);
+  assert.deepEqual(q.warnings, []);
+  // A stray [] mixed into a group is ignored rather than becoming an answer.
+  assert.deepEqual(parseQuestionText('Q\n\nfox\n[]\nwolf')[0].answers.nichion, ['fox', 'wolf']);
+  // Round trip writes [] for empty tiers in the middle.
+  assert.equal(promptToText(q), 'animals\n\n[]\n\ncat\nmouse\n\n[]\n\n[]\n\nant');
 });

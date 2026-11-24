@@ -189,3 +189,6 @@ body.admin-open #app { visibility: hidden; }
 .cleanup-note ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: 15px; color: var(--text-2); }
 .cleanup-note li span { font-family: var(--f-pixel); font-size: 7px; color: var(--muted); margin-right: 8px; }
 .pv-note { margin: 6px 0 0 !important; font-size: 14px; color: var(--text-2) !important; }
+/* Typed formats need unambiguous [] - | characters, which the pixel font squashes. */
+.paste-area, .fmt-example, .fmt code, .help code { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; font-size: 15px; }
+.fmt code, .help code { font-size: 13px; }

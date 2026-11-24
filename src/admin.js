@@ -638,7 +638,7 @@
           <li><b>First line</b> is the question, then a <b>blank line</b>.</li>
           <li>Then answer groups, one answer per line, with a blank line between groups, <b>deepest first</b>:
             <span class="fmt-order">${E.TEXT_ORDER.map(k => `<i style="--tc:var(--t-${k})">${esc(E.TIER_BY_KEY[k].name)}</i>`).join('<span>→</span>')}</span></li>
-          <li>Stop early to leave the shallow tiers empty. Put <code>-</code> on its own to skip a tier.</li>
+          <li>Put <code>[]</code> on its own line for a tier with nothing in it. Stop early to leave the shallow tiers empty.</li>
           <li><code>NYC | New York City</code> adds extra spellings. A <code>---</code> line starts another question.</li>
         </ul>
       </div>
