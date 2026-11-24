@@ -831,3 +831,12 @@ function draftResults(view) {
 
 // ---- Boot -----------------------------------------------------------------------------
 home();
+
+// Offline support: once opened over https (or localhost), keep a copy on the
+// device so the game also opens with no connection, e.g. from the Home Screen.
+try {
+  const servable = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  if ('serviceWorker' in navigator && servable && window.top === window.self) {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* offline copy is optional */ });
+  }
+} catch (e) { /* not available here */ }
