@@ -710,7 +710,7 @@ function draftScreen() {
     }).join('');
     return `<div class="pcol ${cls}"><div class="pcol-head">${img(p.char)}<span class="w-name">${esc(nm(p))}</span><span class="w-money">$${D.money[p.id]}</span></div>${picks}</div>`;
   }).join('');
-  const bidline = holder
+  const bidline = L.free ? '' : holder
     ? `<div class="bidline">Top bid <b class="bid">$${L.bid}</b> ${img(holder.char)} <b>${esc(nm(holder))}</b></div>`
     : `<div class="bidline none">No bids yet · opening bid $1</div>`;
   let lower;

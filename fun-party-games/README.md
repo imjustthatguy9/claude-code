@@ -19,20 +19,22 @@ The list is saved on the device.
 - Pass the phone. Each player's card shows their name; **pull it up** to peek at what's
   underneath and **let go** to drop it back down. Underneath is the secret word with its
   picture, or "You are the IMPOSTER!" plus the hint, if hints are on.
-- Once everyone has looked, the app picks who talks first, then shows a big
-  **Reveal imposter** button.
+- Once everyone has looked, the screen shows only who goes first and a big
+  **Reveal imposter** button in the middle.
 
 ### 💣 Who Has the Bomb? (2+ players)
 - A random player starts, with a category such as *3-letter words* or *Sports*.
   Pick as many packs as you like: there are 16 packs and 237 categories, each with a picture.
-- Light the fuse and pass the phone. The bomb has three stages:
+- Put the phone in the middle of the table and light the fuse. The screen shows only the
+  big bomb while everyone takes turns around the circle. The bomb has three stages:
   1. **Dormant**: it just sits there with the fuse fizzing.
   2. **Blinking red** and beeping.
   3. Blinking and beeping **fast**, then it explodes at a random moment.
-- Tap whoever was holding it. A "boom board" keeps score.
+- Tap whoever's turn it was. A "boom board" keeps score.
 
 ### 💰 $20 Draft (2+ players)
-- Choose **3 or 5 picks** and a set to draft from.
+- Choose **3 or 5 picks** and a set to draft from. During the draft every player has a
+  column, with the pictures of what they've won stacked underneath.
 - Everyone has $20. One item comes up at a time (every item has art). Starting with a
   random player and going around, you **bid higher** or **pass**. Passing takes you out
   of that item. If you can't afford to top the bid, you're skipped.
