@@ -268,7 +268,7 @@ function home() {
     </button>
     <div class="games">
       ${tile('imp', 'Imposter', sprURL('spy'), 'Pass the phone. One of you is faking it.', 3, 'var(--purple)')}
-      ${tile('bomb', 'Who Has the Bomb?', sprURL(bombRows(true)), 'Name one and pass it on before it blows!', 2, 'var(--red)')}
+      ${tile('bomb', 'Who Has the Bomb?', sprURL(bombRows(true)), 'Take turns naming things before it blows!', 2, 'var(--red)')}
       ${tile('draft', '$20 Draft', sprURL('coin'), 'Bid, pass and build the best team.', 2, 'var(--green)')}
     </div>
     <p class="foot">Best played passing one phone around ♥</p>
