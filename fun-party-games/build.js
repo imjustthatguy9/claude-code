@@ -13,7 +13,12 @@ const fonts = [
 ].map(([family, file, weight]) =>
   `@font-face{font-family:'${family}';font-style:normal;font-weight:${weight};font-display:swap;` +
   `src:url(data:font/woff2;base64,${fs.readFileSync(path.join(SRC, 'fonts', file)).toString('base64')}) format('woff2');}`
-).join('\n');
+).join('\n') +
+  // Pixelify Sans draws 2 and 5 like S and 8, so numbers (and $ +) use Press Start 2P,
+  // scaled down to sit nicely in body text.
+  `\n@font-face{font-family:'PFG Digits';font-style:normal;font-weight:400 700;font-display:swap;size-adjust:64%;` +
+  `unicode-range:U+0024,U+002B,U+0030-0039;` +
+  `src:url(data:font/woff2;base64,${fs.readFileSync(path.join(SRC, 'fonts', 'PressStart2P.woff2')).toString('base64')}) format('woff2');}`;
 
 // Favicon: the lit bomb sprite, as crisp SVG rects.
 const art = new Function(read('art.js') + '\nreturn { PAL, bombRows };')();

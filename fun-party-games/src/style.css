@@ -15,7 +15,7 @@
   --teal: #25b9d1;
   --px: 4px;
   --head: 'Press Start 2P', ui-monospace, monospace;
-  --body: 'Pixelify Sans', ui-rounded, system-ui, sans-serif;
+  --body: 'PFG Digits', 'Pixelify Sans', ui-rounded, system-ui, sans-serif;
   color-scheme: light;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
