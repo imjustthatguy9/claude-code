@@ -123,7 +123,66 @@
       }
       if (best && best.distance === 0) return best;
     }
-    return best;
+    return best || containMatch(guess, answers);
+  }
+
+  // ------------------------------------------------- "contains the answer"
+  // Fallback when nothing matches directly: the guess contains exactly one
+  // answer as whole words ("red fox", "the planet mars", "i think its a
+  // golden retriever") with only a little extra. Filler words don't count as
+  // extra. Two different answers in one guess ("cat dog") never match, so
+  // listing answers can't be used to fish for points.
+  const FILLER = new Set(('a an the of my some and or is its it i im id think thinking maybe perhaps probably ' +
+    'definitely surely obviously like guess answer that this one called named say would be go with um uh hmm').split(' '));
+  const MAX_EXTRA_WORDS = 2;
+  const extraCharsAllowed = ansLen => Math.max(6, ansLen);
+
+  const wordsOf = s => normalize(s).split(' ').filter(Boolean).map(singularize);
+
+  function containMatch(guess, answers) {
+    const gw = wordsOf(guess);
+    if (gw.length < 2) return null;
+    const hits = [];
+    for (let t = TIERS.length - 1; t >= 0; t--) {
+      const tier = TIERS[t];
+      ((answers && answers[tier.key]) || []).forEach((line, li) => {
+        const ans = parseAnswer(line);
+        if (!ans) return;
+        let hit = null;
+        for (const spelling of ans.spellings) {
+          const aw = wordsOf(spelling);
+          const ak = aw.join('');
+          if (ak.length < 3) continue;                       // "Go" shouldn't match "go fish"
+          const cap = allowedTypos(ak.length);
+          // Same number of words, or one more (so "dragon fruit" finds "dragonfruit").
+          for (const size of [aw.length, aw.length + 1]) {
+            if (size >= gw.length + (size === aw.length ? 0 : 1)) continue;
+            for (let i = 0; i + size <= gw.length; i++) {
+              const win = gw.slice(i, i + size).join('');
+              const d = editDistance(win, ak, cap);
+              if (d <= cap && (!hit || size > hit.len || (size === hit.len && d < hit.d))) {
+                hit = { tier: tier.key, line: `${tier.key}:${li}`, ans, start: i, len: size, d, ansLen: ak.length };
+              }
+            }
+          }
+        }
+        if (hit) hits.push(hit);
+      });
+    }
+    if (!hits.length) return null;
+    // A hit sitting inside a longer hit is the same answer, not a second one
+    // ("golden retriever" vs "retriever").
+    const covers = (a, b) => a !== b && a.start <= b.start && a.start + a.len >= b.start + b.len && a.len > b.len;
+    const outer = hits.filter(h => !hits.some(o => covers(o, h)));
+    if (new Set(outer.map(h => h.line)).size !== 1) return null;   // zero or several different answers
+    const h = outer.reduce((a, b) => (b.d < a.d ? b : a));
+    const extra = gw.filter((w, i) => (i < h.start || i >= h.start + h.len) && !FILLER.has(w));
+    const extraChars = extra.join('').length;
+    if (extra.length > MAX_EXTRA_WORDS || extraChars > extraCharsAllowed(h.ansLen)) return null;
+    return {
+      tier: h.tier, display: h.ans.display, desc: DESC_TIERS.includes(h.tier) ? h.ans.desc : null,
+      corrected: true, contained: true, distance: allowedTypos(h.ansLen) + 1,
+    };
   }
 
   // ------------------------------------------------------------- dedupe

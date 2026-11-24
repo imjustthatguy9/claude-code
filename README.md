@@ -56,7 +56,7 @@ The file ships with sample prompts for Nov 22–25, 2026. Replace them with your
 - **Yesterday's depths** lists every answer in every tier for the day before.
 - After finishing, a **Come back tomorrow** card with a countdown shows when today's best guesses unlock. It appears under your stats on the results page and on the home screen.
 - When a day has no prompts, pressing Play says *the ocean is calm*.
-- **Auto-correct:** capital letters, punctuation, accents, a leading "the/a/an" and simple plurals are ignored. Typos are forgiven based on the answer's length: 1–3 letters must be exact, 4–5 letters allow 1 typo, 6–9 allow 2, and 10 or more allow 3.
+- **Auto-correct:** capital letters, punctuation, accents, a leading "the/a/an" and simple plurals are ignored. Typos are forgiven based on the answer's length: 1–3 letters must be exact, 4–5 letters allow 1 typo, 6–9 allow 2, and 10 or more allow 3. If nothing matches directly, a guess that **contains** an answer as whole words, with only a little extra, still counts. "red fox", "the planet mars" and "I think it's a golden retriever" all work. "A little extra" means at most 2 extra words, about as long as the answer itself; filler like "a", "the" and "I think" doesn't count. A guess containing two different answers ("cat dog") never counts, and answers of 1–2 letters are skipped.
 
 ## Fair play — and its limits
 

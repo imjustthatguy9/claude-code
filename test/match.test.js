@@ -60,3 +60,29 @@ test('helpers', () => {
   assert.equal(findDuplicates({ plankton: ['Apple'], rare: ['apple'] }).length, 1);
   assert.equal(findDuplicates({ rare: ['Iran'], deepcut: ['Iraq'] }).length, 0, 'different short answers are not merged');
 });
+
+test('a guess that contains the answer (with only a little extra) counts', () => {
+  const A = {
+    nichion: ['fox', 'Golden Retriever', 'dragonfruit'], deepcut: ['retriever', 'cat'], rare: ['Mars'],
+    schooler: ['dog'], clever: ['Go'], plankton: ['New York City | NYC'],
+  };
+  const hit = (g, display) => {
+    const m = matchGuess(g, A);
+    assert.ok(m, `${g} should match`);
+    assert.equal(m.display, display, g);
+    assert.equal(m.corrected, true);
+  };
+  hit('red fox', 'fox');
+  hit('the planet mars', 'Mars');
+  hit('i think its a golden retriever', 'Golden Retriever');
+  hit('golden retreiver puppy', 'Golden Retriever');       // typo + extra
+  hit('dragon fruit smoothie', 'dragonfruit');
+  hit('nyc baby', 'New York City');
+  assert.equal(matchGuess('red fox', A).contained, true);
+  // Not matched:
+  for (const g of ['cat dog', 'cat and a dog', 'catfish', 'go fish', 'big fluffy orange fox', 'mars bar chocolate']) {
+    assert.equal(matchGuess(g, A), null, g);
+  }
+  // A direct match always wins over "contains".
+  assert.equal(matchGuess('retriever', A).tier, 'deepcut');
+});

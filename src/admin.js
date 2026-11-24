@@ -338,7 +338,7 @@
       <b>How it works</b>
       <ul>
         <li>One answer per line. Extra accepted spellings go after a bar: <code>New York City | NYC | Big Apple</code>. Players see the first one.</li>
-        <li>Capitals, punctuation, accents, “the/a/an” and simple plurals are ignored. Small typos are auto-corrected (none for 1–3 letters, 1 for 4–5, 2 for 6–9, 3 for 10+).</li>
+        <li>Capitals, punctuation, accents, “the/a/an” and simple plurals are ignored. Small typos are auto-corrected (none for 1–3 letters, 1 for 4–5, 2 for 6–9, 3 for 10+). A guess that <b>contains</b> one answer with only a little extra (“red fox”, “the planet mars”) also counts; two different answers in one guess never do.</li>
         <li><b>📝 Paste as text:</b> question on the first line, a blank line, then answer groups deepest first (Nichion, Deep Cut, Rare, Schooler, Too Clever, Plankton), with a blank line between groups. Pasting that straight into a question box works too.</li>
         <li><b>Duplicates are cleaned up for you.</b> If the same answer (or a near-identical spelling, plural or typo) is in more than one tier, the deepest tier keeps it and the others are removed when you save.</li>
         <li><b>Descriptions:</b> add <code>*(…)</code> after a Nichion or Too Clever answer, like <code>cat *(feline friend)</code>. Players see it when they land that answer and on the next day’s answer sheet.</li>
@@ -406,7 +406,7 @@
       if (!m) { out.style.removeProperty('--tc'); out.innerHTML = '🫧 <b>No catch</b> — 0 pts'; return; }
       const t = E.TIER_BY_KEY[m.tier];
       out.style.setProperty('--tc', `var(--t-${m.tier})`);
-      out.innerHTML = `<b>${esc(t.name)}</b> · +${t.points} — matches “${esc(m.display)}”${m.corrected ? ` <i>(auto-corrected, ${m.distance} typo${m.distance === 1 ? '' : 's'})</i>` : ''}${m.desc ? `<br><span class="tester-desc">💬 ${esc(m.desc)}</span>` : ''}`;
+      out.innerHTML = `<b>${esc(t.name)}</b> · +${t.points} — matches “${esc(m.display)}”${m.contained ? ' <i>(auto-corrected — the guess contains the answer)</i>' : m.corrected ? ` <i>(auto-corrected, ${m.distance} typo${m.distance === 1 ? '' : 's'})</i>` : ''}${m.desc ? `<br><span class="tester-desc">💬 ${esc(m.desc)}</span>` : ''}`;
     };
     tin.addEventListener('input', runTest);
 
