@@ -111,7 +111,8 @@
         const ans = parseAnswer(line);
         if (!ans) continue;
         for (const s of ans.spellings) {
-          const k = normalize(s).replace(/ /g, '');
+          // Same key the matcher uses, so "cat" and "Cats" count as one answer.
+          const k = normalize(s).split(' ').map(singularize).join('');
           if (!k) continue;
           if (seen.has(k) && seen.get(k) !== tier.key) dups.push({ spelling: s, tiers: [seen.get(k), tier.key] });
           else if (!seen.has(k)) seen.set(k, tier.key);
@@ -185,7 +186,67 @@
     return out;
   }
 
-  // ----------------------------------------------------------------- sha256
+  // ------------------------------------------------------------ text import
+  // Quick paste format for admins:
+  //
+  //   Name an animal          ← first line: the question
+  //                           ← blank line
+  //   fox                     ← Nichion answers
+  //                           ← blank line
+  //   cat                     ← Deep Cut answers
+  //   mouse
+  //                           ← …then Rare, Schooler, Too Clever, Plankton
+  //
+  // A group that is just "-" or "none" leaves that tier empty. A line of
+  // three or more dashes ("---") starts another question.
+  const TEXT_ORDER = TIERS.map(t => t.key).reverse();   // nichion → plankton
+  const EMPTY_GROUP = /^(-|—|–|none|\(none\)|n\/a|empty)$/i;
+
+  function cleanLine(line) {
+    return line.replace(/^\s*(?:[-*•·]\s+|\d+[.)]\s+)/, '').trim();
+  }
+
+  function parseQuestionText(raw) {
+    const chunks = String(raw || '').replace(/\r\n?/g, '\n').split(/^\s*-{3,}\s*$/m);
+    const out = [];
+    for (const chunk of chunks) {
+      const lines = chunk.split('\n').map(l => l.replace(/\s+$/, ''));
+      while (lines.length && !lines[0].trim()) lines.shift();
+      if (!lines.length) continue;
+      const text = cleanLine(lines.shift()).replace(/^(q|question)\s*[:.]\s*/i, '');
+      // Group the rest by blank lines.
+      const groups = [];
+      let cur = null;
+      for (const l of lines) {
+        if (!l.trim()) { cur = null; continue; }
+        if (!cur) groups.push(cur = []);
+        cur.push(cleanLine(l));
+      }
+      const answers = Object.fromEntries(TIERS.map(t => [t.key, []]));
+      const warnings = [];
+      groups.forEach((g, i) => {
+        if (i >= TEXT_ORDER.length) return;
+        if (g.length === 1 && EMPTY_GROUP.test(g[0])) return;
+        answers[TEXT_ORDER[i]] = g.filter(Boolean);
+      });
+      if (groups.length > TEXT_ORDER.length) {
+        warnings.push(`${groups.length - TEXT_ORDER.length} extra group${groups.length - TEXT_ORDER.length === 1 ? '' : 's'} after Plankton ignored`);
+      }
+      if (!groups.length) warnings.push('No answers found — put a blank line after the question, then the answers');
+      for (const d of findDuplicates(answers)) warnings.push(`“${d.spelling}” is in both ${TIER_BY_KEY[d.tiers[0]].name} and ${TIER_BY_KEY[d.tiers[1]].name}`);
+      out.push({ text, answers, warnings });
+    }
+    return out;
+  }
+
+  /** Turn a prompt back into the paste format (used for "copy as text"). */
+  function promptToText(p) {
+    const groups = TEXT_ORDER.map(k => (p.answers[k] || []).filter(Boolean));
+    while (groups.length && !groups[groups.length - 1].length) groups.pop();
+    return [p.text, ...groups.map(g => (g.length ? g.join('\n') : '-'))].join('\n\n');
+  }
+
+
   // Small pure-JS SHA-256 (crypto.subtle isn't available on every file:// page).
   function sha256(msg) {
     const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
@@ -409,7 +470,7 @@
   const api = {
     TIERS, TIER_BY_KEY, MAX_PROMPTS, TIME_LIMIT_MS, normalize, keys, editDistance, allowedTypos, matchGuess, parseAnswer,
     findDuplicates, singularize, localDate, addDays, isDate, encodeDay, decodeDay, cleanPrompts, sha256,
-    makeStorage, Game, GuessError,
+    makeStorage, Game, GuessError, parseQuestionText, promptToText, TEXT_ORDER,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.NichionEngine = api;

@@ -19,9 +19,26 @@ Each day has up to **five prompts**, with **25 seconds** for each. Keep typing u
 2. The first time, you choose an admin password. It's saved into every game file you download from then on.
 3. Pick a day on the calendar and add 1–5 prompts. Each prompt has a box for each tier, with **one answer per line**. Extra accepted spellings go after a bar: `New York City | NYC | Big Apple`. Players see the first spelling.
 4. **Reuse old prompts.** The **Past prompts** list under the calendar shows every prompt from other days. You can search it (by prompt or answer) and filter it by Past / Upcoming / All. Open one to see its answers, then paste it into a prompt slot or add it as a new prompt. Each prompt also has a **📋 Past** button that pastes straight into that slot. Pasted prompts can be edited like any other.
-5. Use **Test a guess** under each prompt to check where an answer would land, including any auto-correction.
-6. Press **Save Day**. This keeps your edits in your browser.
-7. Press **Download game file** to get a new `nichion.html` with all your prompts inside it. **Share that file.** Players only see changes once they have the new file.
+5. **Paste as text.** Use **📝 Text** on a prompt or **📝 Paste as text** under the prompts, or paste a whole block straight into a question box. The format:
+
+   ```
+   Name an animal      ← question
+
+   fox                 ← Nichion
+
+   cat                 ← Deep Cut
+   mouse
+   snail
+
+   dog                 ← Rare (then Schooler, Too Clever, Plankton)
+   cricket
+   ant
+   ```
+
+   The first line is the question. After that come answer groups, one answer per line, separated by blank lines, deepest tier first. Stop early to leave the shallow tiers empty, or put `-` on its own to skip a tier. A `---` line starts another question. A preview shows where every answer will land before anything is filled in.
+6. Use **Test a guess** under each prompt to check where an answer would land, including any auto-correction.
+7. Press **Save Day**. This keeps your edits in your browser.
+8. Press **Download game file** to get a new `nichion.html` with all your prompts inside it. **Share that file.** Players only see changes once they have the new file.
 
 The **More** menu has: back up / restore prompts as JSON, change password, reset your own plays (for testing), and discard edits.
 

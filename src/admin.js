@@ -315,13 +315,14 @@
     }
     draft.forEach((p, i) => ed.append(promptCard(p, i)));
     if (draft.length < MAXP) {
-      const add = h(`<div class="add-row"><button class="btn blue">+ ADD PROMPT ${draft.length + 1}</button></div>`);
-      add.querySelector('button').addEventListener('click', () => {
+      const add = h(`<div class="add-row"><button class="btn blue" data-add>+ ADD PROMPT ${draft.length + 1}</button><button class="btn ghost" data-addtext>📝 PASTE AS TEXT</button></div>`);
+      add.querySelector('[data-add]').addEventListener('click', () => {
         draft.push(blankPrompt());
         renderEditor();
         const cards = ed.querySelectorAll('.ptext');
         cards[cards.length - 1]?.focus();
       });
+      add.querySelector('[data-addtext]').addEventListener('click', () => pasteTextModal(draft.length));
       ed.append(add);
     }
     ed.append(h(`<div class="help px-box dim">
@@ -329,6 +330,7 @@
       <ul>
         <li>One answer per line. Extra accepted spellings go after a bar: <code>New York City | NYC | Big Apple</code>. Players see the first one.</li>
         <li>Capitals, punctuation, accents, “the/a/an” and simple plurals are ignored. Small typos are auto-corrected (none for 1–3 letters, 1 for 4–5, 2 for 6–9, 3 for 10+).</li>
+        <li><b>📝 Paste as text:</b> question on the first line, a blank line, then answer groups deepest first (Nichion, Deep Cut, Rare, Schooler, Too Clever, Plankton), with a blank line between groups. Pasting that straight into a question box works too.</li>
         <li>Anything not listed scores 0. A day with fewer than ${MAXP} prompts still works; the score page notes “(out of N questions today)”.</li>
         <li><b>Save Day</b> keeps your edits in this browser. <b>Download game file</b> makes a new <code>nichion.html</code> with everything inside it; share that file.</li>
       </ul>
@@ -344,6 +346,7 @@
         <div class="tools">
           <button class="icon-btn" data-up aria-label="Move up" ${i === 0 ? 'disabled' : ''}>▲</button>
           <button class="icon-btn" data-down aria-label="Move down" ${i === draft.length - 1 ? 'disabled' : ''}>▼</button>
+          <button class="icon-btn" data-text aria-label="Paste prompt ${i + 1} as text">📝 TEXT</button>
           <button class="icon-btn" data-past aria-label="Paste a past prompt into prompt ${i + 1}">📋 PAST</button>
           <button class="icon-btn del" data-del aria-label="Delete prompt">✕ DELETE</button>
         </div>
@@ -360,7 +363,17 @@
     const ptext = card.querySelector('.ptext');
     ptext.value = p.text;
     ptext.addEventListener('input', () => { p.text = ptext.value; markDirty(); });
+    // Pasting a whole question block (question, blank line, answers…) fills the card.
+    ptext.addEventListener('paste', e => {
+      const raw = e.clipboardData && e.clipboardData.getData('text');
+      if (!raw || !/\n\s*\n/.test(raw.trim())) return;
+      e.preventDefault();
+      const qs = E.parseQuestionText(raw);
+      if (qs.length === 1 && !qs[0].warnings.length) applyParsed(qs, i);
+      else pasteTextModal(i, raw);
+    });
     card.querySelector('[data-past]').addEventListener('click', () => libraryModal(i));
+    card.querySelector('[data-text]').addEventListener('click', () => pasteTextModal(i));
     card.querySelector('[data-up]').addEventListener('click', () => { [draft[i - 1], draft[i]] = [draft[i], draft[i - 1]]; renderEditor(); });
     card.querySelector('[data-down]').addEventListener('click', () => { [draft[i + 1], draft[i]] = [draft[i], draft[i + 1]]; renderEditor(); });
     card.querySelector('[data-del]').addEventListener('click', () => {
@@ -542,6 +555,99 @@
     document.addEventListener('keydown', onEsc, true);
     document.body.append(back);
     box.querySelector('.lib-search').focus();
+  }
+
+  // ------------------------------------------------------------ text paste
+  const EXAMPLE = 'Name an animal\n\nfox\n\ncat\nmouse\nsnail\n\ndog\ncricket\nant';
+
+  /** Put parsed questions into the day, starting at slot `start`. Returns false if cancelled. */
+  function applyParsed(qs, start) {
+    const room = MAXP - start;
+    const use = qs.slice(0, Math.max(0, room));
+    if (!use.length) { toast(`This day already has ${MAXP} prompts`, 'error'); return false; }
+    const overwrite = use.map((_, k) => start + k).filter(k => {
+      const d = draft[k];
+      return d && (d.text.trim() || Object.values(d.answers).some(v => v.trim()));
+    });
+    if (overwrite.length && !confirm(`Replace prompt${overwrite.length === 1 ? '' : 's'} ${overwrite.map(k => k + 1).join(', ')} with the pasted text?`)) return false;
+    use.forEach((q, k) => {
+      draft[start + k] = { text: q.text, answers: Object.fromEntries(tiers.map(t => [t.key, q.answers[t.key].join('\n')])) };
+    });
+    renderEditor();
+    const cards = root.querySelectorAll('.pcard');
+    cards[start]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    use.forEach((_, k) => { const c = cards[start + k]; if (c) { c.classList.add('flash'); setTimeout(() => c.classList.remove('flash'), 1200); } });
+    toast(`Filled ${use.length} prompt${use.length === 1 ? '' : 's'} — press Save Day to keep ${use.length === 1 ? 'it' : 'them'}`);
+    return true;
+  }
+
+  function pasteTextModal(start, initial = '') {
+    const back = h(`<div class="modal-backdrop"><div class="modal px-box paste-modal" role="dialog" aria-modal="true" aria-labelledby="paste-h">
+      <button class="icon-btn close" aria-label="Close">✕</button>
+      <h2 id="paste-h">PASTE AS TEXT</h2>
+      <div class="fmt">
+        <pre class="fmt-example" aria-label="Example"></pre>
+        <ul>
+          <li><b>First line</b> is the question, then a <b>blank line</b>.</li>
+          <li>Then answer groups, one answer per line, with a blank line between groups, <b>deepest first</b>:
+            <span class="fmt-order">${E.TEXT_ORDER.map(k => `<i style="--tc:var(--t-${k})">${esc(E.TIER_BY_KEY[k].name)}</i>`).join('<span>→</span>')}</span></li>
+          <li>Stop early to leave the shallow tiers empty. Put <code>-</code> on its own to skip a tier.</li>
+          <li><code>NYC | New York City</code> adds extra spellings. A <code>---</code> line starts another question.</li>
+        </ul>
+      </div>
+      <label class="sr-only" for="paste-ta">Question text</label>
+      <textarea id="paste-ta" class="paste-area" spellcheck="false" placeholder="Paste or type here…"></textarea>
+      <div class="paste-preview" aria-live="polite"></div>
+      <div class="paste-actions">
+        <button class="btn ghost" data-example>USE EXAMPLE</button>
+        <button class="btn" data-apply disabled>FILL</button>
+      </div>
+    </div></div>`);
+    const box = back.firstElementChild;
+    box.querySelector('.fmt-example').textContent = EXAMPLE;
+    const ta = box.querySelector('textarea'), prev = box.querySelector('.paste-preview'), apply = box.querySelector('[data-apply]');
+    let parsed = [];
+    const close = () => { back.remove(); document.removeEventListener('keydown', onKey, true); };
+    const onKey = e => {
+      if (e.key === 'Escape') { e.stopPropagation(); close(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !apply.disabled) { e.preventDefault(); apply.click(); }
+    };
+    const paint = () => {
+      parsed = E.parseQuestionText(ta.value).filter(q => q.text);
+      prev.innerHTML = '';
+      const room = MAXP - start;
+      parsed.forEach((q, k) => {
+        const slot = start + k;
+        const fits = k < room;
+        const card = h(`<div class="pv ${fits ? '' : 'off'}">
+          <div class="pv-head"><span class="pv-slot">${fits ? (slot < draft.length ? `→ PROMPT ${slot + 1}` : `→ NEW PROMPT ${slot + 1}`) : 'WON’T FIT'}</span><b>${esc(q.text)}</b></div>
+          <div class="pv-tiers"></div>
+        </div>`);
+        const tl = card.querySelector('.pv-tiers');
+        for (const key of E.TEXT_ORDER) {
+          const list = q.answers[key];
+          const t = E.TIER_BY_KEY[key];
+          tl.append(h(`<div class="pv-tier ${list.length ? '' : 'empty'}" style="--tc:var(--t-${key})"><b>${esc(t.name.toUpperCase())}</b><span>${list.length ? list.map(a => `<em>${esc(E.parseAnswer(a)?.display || a)}</em>`).join('') : '—'}</span></div>`));
+        }
+        for (const w of q.warnings) card.append(h(`<p class="pv-warn">⚠ ${esc(w)}</p>`));
+        prev.append(card);
+      });
+      if (parsed.length > room) prev.append(h(`<p class="pv-warn">⚠ A day holds ${MAXP} prompts — only the first ${Math.max(0, room)} will be used.</p>`));
+      const n = Math.min(parsed.length, Math.max(0, room));
+      apply.disabled = !n;
+      apply.textContent = !n ? 'FILL' : n === 1 ? (start < draft.length ? `FILL PROMPT ${start + 1}` : 'ADD AS NEW PROMPT') : `FILL PROMPTS ${start + 1}–${start + n}`;
+    };
+    ta.addEventListener('input', paint);
+    box.querySelector('[data-example]').addEventListener('click', () => { ta.value = EXAMPLE; paint(); ta.focus(); });
+    apply.addEventListener('click', () => { if (applyParsed(parsed, start)) close(); });
+    box.querySelector('.close').addEventListener('click', close);
+    back.addEventListener('click', e => { if (e.target === back) close(); });
+    document.addEventListener('keydown', onKey, true);
+    document.body.append(back);
+    // Pre-fill with what's already in that slot, so it can be edited as text too.
+    ta.value = initial || (draft[start] && draft[start].text ? E.promptToText({ text: draft[start].text, answers: Object.fromEntries(tiers.map(t => [t.key, lines(draft[start].answers[t.key] || '')])) }) : '');
+    paint();
+    ta.focus();
   }
 
   function markDirty() {
