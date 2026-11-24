@@ -99,32 +99,54 @@
   // Typos forgiven by answer length: 1–3 exact, 4–5 one, 6–9 two, 10+ three.
   const allowedTypos = len => (len <= 3 ? 0 : len <= 5 ? 1 : len <= 9 ? 2 : 3);
 
-  /** Best match for a guess: exact beats fuzzy; on a tie the deeper tier wins. */
-  function matchGuess(guess, answers) {
+  /**
+   * Match a guess against a prompt's answers.
+   *  - An exact match (after normalising) always counts; the deepest tier wins.
+   *  - Otherwise the guess is auto-corrected ONLY if it is close to exactly one
+   *    answer — close meaning a small typo, or containing that answer with a
+   *    little extra. Close to two or more different answers = ambiguous, no match.
+   * @returns {{ match: object|null, ambiguous: string[]|null }}  ambiguous lists the
+   *   answers it was close to (for the admin tester only — never shown to players).
+   */
+  function matchDetailed(guess, answers) {
     const gKeys = keys(guess);
-    if (!gKeys.length) return null;
-    let best = null;
+    if (!gKeys.length) return { match: null, ambiguous: null };
+    const near = new Map();   // line id -> best typo candidate
     for (let t = TIERS.length - 1; t >= 0; t--) {
       const tier = TIERS[t];
-      for (const line of (answers && answers[tier.key]) || []) {
+      let exact = null;
+      ((answers && answers[tier.key]) || []).forEach((line, li) => {
         const ans = parseAnswer(line);
-        if (!ans) continue;
+        if (!ans) return;
+        const id = `${tier.key}:${li}`;
         for (const spelling of ans.spellings) {
           for (const ak of keys(spelling)) {
             const cap = allowedTypos(ak.length);
             for (const gk of gKeys) {
               const d = editDistance(gk, ak, cap);
-              if (d <= cap && (!best || d < best.distance)) {
-                best = { tier: tier.key, display: ans.display, desc: DESC_TIERS.includes(tier.key) ? ans.desc : null, corrected: d > 0, distance: d };
-              }
+              if (d > cap) continue;
+              const cand = { tier: tier.key, display: ans.display, desc: DESC_TIERS.includes(tier.key) ? ans.desc : null, corrected: d > 0, distance: d };
+              if (d === 0 && !exact) exact = cand;
+              if (!near.has(id) || d < near.get(id).distance) near.set(id, cand);
             }
           }
         }
-      }
-      if (best && best.distance === 0) return best;
+      });
+      if (exact) return { match: exact, ambiguous: null };      // deepest exact match wins
     }
-    return best || containMatch(guess, answers);
+    const contained = containHits(guess, answers);
+    const ids = new Set([...near.keys(), ...contained.hits.map(h => h.line)]);
+    if (ids.size > 1) {
+      const names = new Map();
+      for (const [id, c] of near) names.set(id, c.display);
+      for (const h of contained.hits) names.set(h.line, h.ans.display);
+      return { match: null, ambiguous: [...new Set(names.values())] };
+    }
+    if (near.size === 1) return { match: [...near.values()][0], ambiguous: null };
+    return { match: contained.match, ambiguous: null };
   }
+
+  function matchGuess(guess, answers) { return matchDetailed(guess, answers).match; }
 
   // ------------------------------------------------- "contains the answer"
   // Fallback when nothing matches directly: the guess contains exactly one
@@ -139,9 +161,11 @@
 
   const wordsOf = s => normalize(s).split(' ').filter(Boolean).map(singularize);
 
-  function containMatch(guess, answers) {
+  /** Answers contained in the guess (outermost only), and the match if it's a fair one. */
+  function containHits(guess, answers) {
+    const none = { hits: [], match: null };
     const gw = wordsOf(guess);
-    if (gw.length < 2) return null;
+    if (gw.length < 2) return none;
     const hits = [];
     for (let t = TIERS.length - 1; t >= 0; t--) {
       const tier = TIERS[t];
@@ -169,19 +193,22 @@
         if (hit) hits.push(hit);
       });
     }
-    if (!hits.length) return null;
+    if (!hits.length) return none;
     // A hit sitting inside a longer hit is the same answer, not a second one
     // ("golden retriever" vs "retriever").
     const covers = (a, b) => a !== b && a.start <= b.start && a.start + a.len >= b.start + b.len && a.len > b.len;
     const outer = hits.filter(h => !hits.some(o => covers(o, h)));
-    if (new Set(outer.map(h => h.line)).size !== 1) return null;   // zero or several different answers
+    if (new Set(outer.map(h => h.line)).size !== 1) return { hits: outer, match: null };   // several different answers
     const h = outer.reduce((a, b) => (b.d < a.d ? b : a));
     const extra = gw.filter((w, i) => (i < h.start || i >= h.start + h.len) && !FILLER.has(w));
     const extraChars = extra.join('').length;
-    if (extra.length > MAX_EXTRA_WORDS || extraChars > extraCharsAllowed(h.ansLen)) return null;
+    if (extra.length > MAX_EXTRA_WORDS || extraChars > extraCharsAllowed(h.ansLen)) return { hits: outer, match: null };
     return {
-      tier: h.tier, display: h.ans.display, desc: DESC_TIERS.includes(h.tier) ? h.ans.desc : null,
-      corrected: true, contained: true, distance: allowedTypos(h.ansLen) + 1,
+      hits: outer,
+      match: {
+        tier: h.tier, display: h.ans.display, desc: DESC_TIERS.includes(h.tier) ? h.ans.desc : null,
+        corrected: true, contained: true, distance: allowedTypos(h.ansLen) + 1,
+      },
     };
   }
 
@@ -545,13 +572,14 @@
       if (!play.started[index]) play.started[index] = +this.now();
       if (this._expired(play, index)) return this._record(play, prompts, index, { timedOut: true });
 
-      const m = matchGuess(text, prompts[index].answers);
+      const { match: m, ambiguous } = matchDetailed(text, prompts[index].answers);
       if (!m) {
         const misses = play.misses[index] || (play.misses[index] = []);
         const repeat = misses.some(x => normalize(x) === normalize(text));
         if (!repeat && misses.length < MAX_MISSES) misses.push(text);
         this.persist();
-        return { invalid: true, repeat, index, guess: text, misses: misses.slice() };
+        // Never say WHICH answers it was close to — that would leak the board.
+        return { invalid: true, repeat, ambiguous: !!ambiguous, index, guess: text, misses: misses.slice() };
       }
       const tier = TIER_BY_KEY[m.tier];
       return this._record(play, prompts, index, {
@@ -613,7 +641,7 @@
   }
 
   const api = {
-    TIERS, TIER_BY_KEY, MAX_PROMPTS, TIME_LIMIT_MS, DESC_TIERS, DESC_RE, formatAnswer, normalize, keys, editDistance, allowedTypos, matchGuess, parseAnswer,
+    TIERS, TIER_BY_KEY, MAX_PROMPTS, TIME_LIMIT_MS, DESC_TIERS, DESC_RE, formatAnswer, normalize, keys, editDistance, allowedTypos, matchGuess, matchDetailed, parseAnswer,
     findDuplicates, dedupeAnswers, describeRemoval, nearDuplicate, singularize, localDate, addDays, isDate, encodeDay, decodeDay, cleanPrompts, sha256,
     makeStorage, Game, GuessError, parseQuestionText, promptToText, TEXT_ORDER,
   };

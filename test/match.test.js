@@ -86,3 +86,31 @@ test('a guess that contains the answer (with only a little extra) counts', () =>
   // A direct match always wins over "contains".
   assert.equal(matchGuess('retriever', A).tier, 'deepcut');
 });
+
+test('auto-correct only when the guess is close to exactly one answer', () => {
+  const { matchDetailed } = require('../src/engine');
+  const A = { nichion: ['Australia', 'fox'], deepcut: ['Austria', 'cat'], rare: ['Iraq'], schooler: ['Iran', 'dog'], clever: [], plankton: [] };
+  const amb = g => { const r = matchDetailed(g, A); assert.equal(r.match, null, g); assert.ok(r.ambiguous && r.ambiguous.length >= 2, g); };
+  amb('Irak');            // Iraq or Iran?
+  amb('Austrlia');        // Australia or Austria?
+  amb('cat dog');         // contains two answers
+  amb('red fox and cat');
+  // Exact always counts, even when another answer is one letter away.
+  assert.equal(matchDetailed('iraq', A).match.display, 'Iraq');
+  assert.equal(matchDetailed('Austria', A).match.display, 'Austria');
+  // Close to only one: still auto-corrected.
+  assert.equal(matchDetailed('Austrailia', A).match.display, 'Australia');
+  assert.equal(matchDetailed('a red fox', A).match.display, 'fox');
+});
+
+test('players are told a guess is ambiguous, never which answers', () => {
+  const E = require('../src/engine');
+  const salt = 's', D = '2026-03-10';
+  const data = { salt, days: { [D]: E.encodeDay(salt, D, [{ text: 'Q', answers: { rare: ['Iraq'], schooler: ['Iran'] } }]) } };
+  let v = null;
+  const g = new E.Game(data, { get: () => v, set: x => { v = x; } }, () => new Date(2026, 2, 10, 12));
+  const r = g.guess({ date: D, index: 0, guess: 'Irak' });
+  assert.equal(r.invalid, true);
+  assert.equal(r.ambiguous, true);
+  assert.ok(!JSON.stringify(r).includes('Iran') && !JSON.stringify(r).includes('Iraq'));
+});

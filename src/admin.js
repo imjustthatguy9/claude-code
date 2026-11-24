@@ -338,7 +338,7 @@
       <b>How it works</b>
       <ul>
         <li>One answer per line. Extra accepted spellings go after a bar: <code>New York City | NYC | Big Apple</code>. Players see the first one.</li>
-        <li>Capitals, punctuation, accents, “the/a/an” and simple plurals are ignored. Small typos are auto-corrected (none for 1–3 letters, 1 for 4–5, 2 for 6–9, 3 for 10+). A guess that <b>contains</b> one answer with only a little extra (“red fox”, “the planet mars”) also counts; two different answers in one guess never do.</li>
+        <li>Capitals, punctuation, accents, “the/a/an” and simple plurals are ignored. Small typos are auto-corrected (none for 1–3 letters, 1 for 4–5, 2 for 6–9, 3 for 10+). A guess that <b>contains</b> one answer with only a little extra (“red fox”, “the planet mars”) also counts. Auto-correct only happens when the guess is close to <b>exactly one</b> answer; if it’s close to two (“Irak” → Iraq or Iran?), the player is asked to be more specific.</li>
         <li><b>📝 Paste as text:</b> question on the first line, a blank line, then answer groups deepest first (Nichion, Deep Cut, Rare, Schooler, Too Clever, Plankton), with a blank line between groups. Pasting that straight into a question box works too.</li>
         <li><b>Duplicates are cleaned up for you.</b> If the same answer (or a near-identical spelling, plural or typo) is in more than one tier, the deepest tier keeps it and the others are removed when you save.</li>
         <li><b>Descriptions:</b> add <code>*(…)</code> after a Nichion or Too Clever answer, like <code>cat *(feline friend)</code>. Players see it when they land that answer and on the next day’s answer sheet.</li>
@@ -402,7 +402,8 @@
     const runTest = () => {
       if (!tin.value.trim()) { out.textContent = ''; return; }
       const answers = Object.fromEntries(tiers.map(t => [t.key, lines(p.answers[t.key] || '')]));
-      const m = E.matchGuess(tin.value, answers);
+      const { match: m, ambiguous } = E.matchDetailed(tin.value, answers);
+      if (!m && ambiguous) { out.style.removeProperty('--tc'); out.innerHTML = `🤔 <b>Too close to call</b> — near ${ambiguous.map(a => `“${esc(a)}”`).join(' and ')}, so it isn’t auto-corrected. Players are told to be more specific.`; return; }
       if (!m) { out.style.removeProperty('--tc'); out.innerHTML = '🫧 <b>No catch</b> — 0 pts'; return; }
       const t = E.TIER_BY_KEY[m.tier];
       out.style.setProperty('--tc', `var(--t-${m.tier})`);

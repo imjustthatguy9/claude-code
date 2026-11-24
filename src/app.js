@@ -381,7 +381,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const result = game.guess({ date: S.today, index: i, guess });
         if (result.invalid) {
           shake();
-          nope.textContent = result.repeat ? `You already tried “${result.guess}”.` : `“${result.guess}” isn’t on the board — try again!`;
+          nope.textContent = result.repeat ? `You already tried “${result.guess}”.`
+            : result.ambiguous ? `“${result.guess}” is close to more than one answer — be more specific!`
+            : `“${result.guess}” isn’t on the board — try again!`;
           nope.classList.remove('show'); void nope.offsetWidth; nope.classList.add('show');
           renderChips(result.misses);
           input.value = '';
