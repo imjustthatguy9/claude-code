@@ -1,0 +1,555 @@
+(function () {
+  'use strict';
+
+  // ------------------------------------------------------------------ setup
+  const $ = (s, r = document) => r.querySelector(s);
+  const screenEl = $('#screen');
+  const ocean = new Ocean($('#ocean'));
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  const EMOJI = { plankton: '🦠', clever: '🐙', schooler: '🐟', rare: '🐢', deepcut: '🏮', mansellion: '🦁', miss: '🫧' };
+  const BLURB = {
+    plankton: 'Everyone thought of it.',
+    clever: 'A little too obvious-clever.',
+    schooler: 'Swimming with the pack.',
+    rare: 'Not many go this deep.',
+    deepcut: 'A true deep cut.',
+    mansellion: 'You found the Mansellion!',
+  };
+
+  let S = null;          // server state
+  let tiers = [], tierBy = {};
+  let resetAt = 0;
+  let busy = false;
+  let view = 'title';
+
+  async function api(path, opts = {}) {
+    const res = await fetch(path, {
+      credentials: 'same-origin',
+      headers: opts.body ? { 'Content-Type': 'application/json' } : {},
+      ...opts,
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(data.message || 'Network error'), { code: data.error, status: res.status });
+    return data;
+  }
+
+  async function load() {
+    S = await api('/api/state');
+    tiers = S.tiers;
+    tierBy = Object.fromEntries(tiers.map(t => [t.key, t]));
+    resetAt = Date.now() + S.resetInMs;
+    return S;
+  }
+
+  const depthSoFar = () => S.play.guesses.reduce((s, g) => s + g.depth, 0);
+  const tierColor = k => `var(--t-${k || 'miss'})`;
+  const fmtDate = (d, opts = { weekday: 'long', month: 'short', day: 'numeric' }) =>
+    new Date(d + 'T12:00:00Z').toLocaleDateString(undefined, { ...opts, timeZone: 'UTC' });
+
+  // ---------------------------------------------------------- screen system
+  function show(node, name) {
+    view = name;
+    hideTip();
+    const olds = [...screenEl.children];
+    for (const old of olds) {
+      if (!old.classList.contains('leaving')) { old.classList.add('leaving'); setTimeout(() => old.remove(), 200); }
+    }
+    if (olds.length) node.style.animationDelay = '120ms';
+    screenEl.appendChild(node);
+    $('#topbar').classList.toggle('hide-logo', name === 'title');
+    $('#depth-gauge').classList.toggle('show', name === 'game');
+    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+  }
+
+  function toast(msg, kind = '') {
+    const t = $('#toast');
+    t.textContent = msg;
+    t.className = 'show ' + kind;
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => { t.className = kind; }, 2600);
+  }
+
+  // ---------------------------------------------------------------- tooltip
+  const tip = $('#tip');
+  function showTip(target) {
+    tip.innerHTML = target.getAttribute('data-tip');
+    tip.hidden = false;
+    const r = target.getBoundingClientRect();
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let x = r.left + r.width / 2 - tw / 2;
+    x = Math.max(10, Math.min(innerWidth - tw - 10, x));
+    let y = r.top - th - 12;
+    if (y < 8) y = r.bottom + 12;
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+    document.querySelectorAll('.chart g.on').forEach(g => g.classList.remove('on'));
+    if (target.matches('.chart g')) target.classList.add('on');
+  }
+  function hideTip() { tip.hidden = true; document.querySelectorAll('.chart g.on').forEach(g => g.classList.remove('on')); }
+  document.addEventListener('pointerover', e => { const t = e.target.closest('[data-tip]'); if (t) showTip(t); });
+  document.addEventListener('pointerout', e => { const t = e.target.closest('[data-tip]'); if (t && !t.contains(e.relatedTarget)) hideTip(); });
+  document.addEventListener('focusin', e => { const t = e.target.closest('[data-tip]'); if (t && t.matches(':focus-visible')) showTip(t); });
+  document.addEventListener('focusout', hideTip);
+  addEventListener('scroll', hideTip, { passive: true });
+
+  // ------------------------------------------------------------------ modal
+  function modal(inner, { onClose } = {}) {
+    const root = $('#modal-root');
+    const back = h(`<div class="modal-backdrop"><div class="modal px-box" role="dialog" aria-modal="true">
+      <button class="icon-btn close" aria-label="Close"><svg viewBox="0 0 12 12" width="18" height="18" shape-rendering="crispEdges"><path fill="currentColor" d="M1 1h2v1h1v1h1v1h2V3h1V2h1V1h2v2h-1v1H9v1H8v2h1v1h1v1h1v2H9v-1H8v-1H7V9H5v1H4v1H3v1H1v-2h1V9h1V8h1V6H3V5H2V4H1z"/></svg></button>
+    </div></div>`);
+    const box = back.firstElementChild;
+    box.append(inner);
+    const prevFocus = document.activeElement;
+    const close = () => {
+      back.classList.add('closing');
+      document.removeEventListener('keydown', onKey);
+      setTimeout(() => { back.remove(); prevFocus?.focus?.(); onClose?.(); }, 150);
+    };
+    const onKey = e => { if (e.key === 'Escape') close(); };
+    back.addEventListener('click', e => { if (e.target === back) close(); });
+    box.querySelector('.close').addEventListener('click', close);
+    document.addEventListener('keydown', onKey);
+    root.append(back);
+    (box.querySelector('[data-autofocus]') || box.querySelector('.close')).focus();
+    return close;
+  }
+
+  function helpModal() {
+    const node = h(`<div>
+      <h2>HOW TO DIVE</h2>
+      <p>Every day there are up to <b>five prompts</b>. Give <b>one answer</b> to each.</p>
+      <p>Common answers keep you in the shallows. <b>Rarer answers sink you deeper</b> and score more. Miss the board entirely and you stay put.</p>
+      <div class="tier-legend" style="margin:16px 0"></div>
+      <p>Small typos are forgiven — the sonar auto-corrects answers that are close.</p>
+      <p>Come back tomorrow to see <b>yesterday’s full answer sheet</b>, and keep your streak alive.</p>
+      <button class="btn wide" data-autofocus>GOT IT</button>
+    </div>`);
+    node.querySelector('.tier-legend').append(...tierLegend());
+    const close = modal(node);
+    node.querySelector('.btn').addEventListener('click', close);
+  }
+
+  function noPromptsModal() {
+    const node = h(`<div class="calm">
+      <div class="art"></div>
+      <h2>THE OCEAN IS CALM</h2>
+      <p>No prompts have been set for today, so there’s no dive.</p>
+      <p>Check back tomorrow${S.hasYesterday ? ' — or look over yesterday’s answers' : ''}.</p>
+      <div class="title-actions">
+        ${S.hasYesterday ? '<button class="btn blue wide" data-y>YESTERDAY</button>' : ''}
+        <button class="btn wide" data-autofocus data-ok>OKAY</button>
+      </div>
+    </div>`);
+    node.querySelector('.art').append(Sprites.img('jelly', 6));
+    const close = modal(node);
+    node.querySelector('[data-ok]').addEventListener('click', close);
+    node.querySelector('[data-y]')?.addEventListener('click', () => { close(); renderYesterday(); });
+  }
+
+  function tierLegend() {
+    return tiers.map(t => {
+      const c = h(`<div class="tier-chip" style="--tc:${tierColor(t.key)}"><span class="tn">${esc(t.name)}</span><span class="td">${t.depth}M · ${t.points}PTS</span></div>`);
+      c.prepend(Sprites.img(t.key, 3));
+      return c;
+    });
+  }
+
+  function statsRow() {
+    const st = S.stats;
+    return h(`<div class="stats">
+      <div class="stat hot"><b>${st.streak}</b><span>Streak</span></div>
+      <div class="stat"><b>${st.bestStreak}</b><span>Best streak</span></div>
+      <div class="stat"><b>${st.played}</b><span>Dives</span></div>
+      <div class="stat"><b>${st.bestScore}</b><span>Best score</span></div>
+    </div>`);
+  }
+
+  // ------------------------------------------------------------------ title
+  function renderTitle() {
+    ocean.setMode('surface');
+    const p = S.play;
+    const letters = 'MANSELLION'.split('').map((c, i) => `<span style="animation-delay:${-i * 0.14}s">${c}</span>`).join('');
+    let status = '';
+    if (!p.total) status = 'No prompts today — the water’s still.';
+    else if (p.done) status = `Today’s dive is done: <b>${p.score} pts</b>.`;
+    else if (p.guesses.length) status = `Dive in progress — prompt <b>${p.current + 1}</b> of ${p.total}.`;
+    else status = `<b>${p.total}</b> prompt${p.total === 1 ? '' : 's'} today. One guess each.`;
+
+    const node = h(`<section class="screen title">
+      <h1 class="logo" aria-label="Mansellion">${letters}</h1>
+      <p class="tagline">How deep can you go?</p>
+      <div class="title-date">${esc(fmtDate(S.today).toUpperCase())}</div>
+      <div class="title-spacer"></div>
+      <div class="title-panel px-box">
+        <p class="title-status">${status}</p>
+        <div class="title-actions">
+          <button class="btn wide" data-play>${p.done ? 'SEE RESULTS' : p.guesses.length ? 'RESUME DIVE' : 'DIVE IN'} <span class="arrow">▸</span></button>
+          <button class="btn blue wide" data-y>YESTERDAY’S DEPTHS</button>
+        </div>
+        <div></div>
+      </div>
+    </section>`);
+    node.querySelector('.title-panel > div:last-child').replaceWith(statsRow());
+    node.querySelector('[data-play]').addEventListener('click', () => {
+      if (!S.play.total) return noPromptsModal();
+      if (S.play.done) return renderResults();
+      renderGame();
+    });
+    node.querySelector('[data-y]').addEventListener('click', renderYesterday);
+    show(node, 'title');
+  }
+
+  // ------------------------------------------------------------------- game
+  function hud() {
+    const p = S.play;
+    const node = h(`<div class="hud px-box dim">
+      <div class="hud-side">DEPTH<b data-depth>${depthSoFar()}m</b></div>
+      <div class="pips-wrap">
+        <div class="pips" role="list" aria-label="Prompts"></div>
+        <div class="pip-label" data-pl></div>
+      </div>
+      <div class="hud-side right">SCORE<b data-score>${p.score}</b></div>
+    </div>`);
+    updateHud(node);
+    return node;
+  }
+
+  function updateHud(node, { pop = -1 } = {}) {
+    const p = S.play;
+    const pips = node.querySelector('.pips');
+    pips.innerHTML = '';
+    for (let i = 0; i < p.total; i++) {
+      const g = p.guesses[i];
+      const pip = h(`<div class="pip" role="listitem"></div>`);
+      if (g) {
+        pip.classList.add('done');
+        if (!g.tier) pip.classList.add('miss');
+        pip.style.setProperty('--tc', tierColor(g.tier));
+        pip.setAttribute('aria-label', `Prompt ${i + 1}: ${g.tier ? tierBy[g.tier].name : 'no catch'}`);
+        pip.dataset.tip = `<b>P${i + 1}</b> “${esc(g.guess)}” · ${g.tier ? esc(tierBy[g.tier].name) : 'No catch'}`;
+        if (i === pop) pip.classList.add('pop');
+      } else {
+        if (i === p.current) pip.classList.add('current');
+        pip.setAttribute('aria-label', `Prompt ${i + 1}${i === p.current ? ' (current)' : ''}`);
+      }
+      pips.append(pip);
+    }
+    const on = p.current == null ? p.total : p.current + 1;
+    node.querySelector('[data-pl]').textContent = `PROMPT ${Math.min(on, p.total)} OF ${p.total}`;
+    updateGauge();
+  }
+
+  function updateGauge() {
+    const g = $('#depth-gauge');
+    const max = Math.max(100, S.play.total * 100);
+    const d = depthSoFar();
+    if (!g.dataset.built || +g.dataset.max !== max) {
+      g.innerHTML = '<div class="fill"></div>';
+      for (let m = 0; m <= max; m += 100) g.append(h(`<div class="tick" style="top:${(m / max) * 100}%">${m}m</div>`));
+      g.append(h('<div class="marker"><span></span></div>'));
+      g.dataset.built = 1; g.dataset.max = max;
+    }
+    g.querySelector('.fill').style.height = (d / max) * 100 + '%';
+    const mk = g.querySelector('.marker');
+    mk.style.top = `calc(${(d / max) * 100}% - 2px)`;
+    mk.querySelector('span').textContent = d + 'm';
+  }
+
+  function bump(el, text) {
+    el.textContent = text;
+    el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+  }
+
+  function renderGame() {
+    const p = S.play;
+    if (!p.total) return noPromptsModal();
+    if (p.done) return renderResults();
+    ocean.setMode('dive');
+    ocean.setDepth(depthSoFar(), { burst: false });
+
+    const node = h(`<section class="screen game"></section>`);
+    const hudEl = hud();
+    node.append(hudEl, h('<div class="window"></div>'));
+    const card = h(`<section class="card px-box"></section>`);
+    node.append(card);
+    show(node, 'game');
+    promptCard(card, hudEl);
+  }
+
+  function promptCard(card, hudEl) {
+    const p = S.play;
+    const i = p.current;
+    const prompt = p.prompts[i];
+    card.innerHTML = '';
+    card.append(h(`<div>
+      <div class="kicker"><span>PROMPT ${i + 1}</span><span>${i + 1} / ${p.total}</span></div>
+      <h2 class="prompt-text" id="prompt-text">${esc(prompt.text)}</h2>
+      <form class="guess-form" autocomplete="off" novalidate>
+        <label class="sr-only" for="guess">Your answer</label>
+        <input class="field" id="guess" name="guess" maxlength="60" placeholder="Your answer…" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-describedby="prompt-text">
+        <button class="btn" type="submit">DIVE</button>
+      </form>
+      <p class="hint"><span>One guess. Rarer = deeper.</span><span><kbd>ENTER</kbd></span></p>
+    </div>`));
+    card.style.animation = 'none'; void card.offsetWidth; card.style.animation = 'screen-in 380ms both';
+    const form = card.querySelector('form');
+    const input = card.querySelector('input');
+    setTimeout(() => input.focus({ preventScroll: true }), 60);
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      if (busy) return;
+      const guess = input.value.trim();
+      if (!guess) { input.classList.remove('shake'); void input.offsetWidth; input.classList.add('shake'); input.focus(); return; }
+      busy = true;
+      const btn = form.querySelector('button');
+      btn.disabled = true; input.readOnly = true;
+      btn.textContent = '···';
+      try {
+        const res = await api('/api/guess', { method: 'POST', body: { date: S.today, index: i, guess } });
+        S.play = res.play; S.stats = res.stats;
+        revealResult(card, hudEl, res.result);
+      } catch (err) {
+        if (err.code === 'day_changed') { toast('A new day has begun — reloading…'); await sleep(900); await load(); return renderTitle(); }
+        if (err.code === 'out_of_order' || err.code === 'done') { await load(); return renderGame(); }
+        toast(err.message, 'error');
+        btn.disabled = false; input.readOnly = false; btn.textContent = 'DIVE'; input.focus();
+      } finally { busy = false; }
+    });
+  }
+
+  function revealResult(card, hudEl, r) {
+    const p = S.play;
+    const t = r.tier ? tierBy[r.tier] : null;
+    const last = p.done;
+    const form = card.querySelector('form');
+    const hint = card.querySelector('.hint');
+    const res = h(`<div class="result ${t ? '' : 'miss'} ${r.tier === 'mansellion' ? 'big' : ''}" style="--tc:${tierColor(r.tier)}">
+      <div class="result-art"></div>
+      <div>
+        <div class="result-tier">${t ? esc(t.name).toUpperCase() : 'NO CATCH'}</div>
+        <div class="result-gain">${t ? `<span class="pts">+${t.points} PTS</span><span>↓ ${t.depth}M</span>` : '<span>+0 PTS</span><span>STAY PUT</span>'}</div>
+        <div class="result-guess">${t ? esc(BLURB[r.tier]) + ' ' : 'Not on the board. '}${t ? `<br><q>${esc(r.matched)}</q>` : `You said <q>${esc(r.guess)}</q>`}</div>
+        ${r.corrected ? `<div class="autocorrect" title="Close enough!">✎ auto-corrected from “${esc(r.guess)}”</div>` : ''}
+      </div>
+      <div class="result-actions"><button class="btn wide" data-next>${last ? 'SEE RESULTS' : 'NEXT PROMPT'} <span class="arrow">▸</span></button></div>
+    </div>`);
+    res.querySelector('.result-art').append(t ? Sprites.img(r.tier, r.tier === 'mansellion' ? 4 : r.tier === 'plankton' || r.tier === 'schooler' ? 6 : 5) : Sprites.img('bubble', 10));
+    form.replaceWith(res);
+    hint.remove();
+
+    // Dive!
+    ocean.setDepth(depthSoFar());
+    if (r.tier === 'mansellion') { ocean.celebrate('#ffcf3f'); const f = h('<div class="flash"></div>'); document.body.append(f); setTimeout(() => f.remove(), 800); }
+    else if (r.tier === 'deepcut') ocean.celebrate('#fff3a0');
+    bump(hudEl.querySelector('[data-depth]'), depthSoFar() + 'm');
+    bump(hudEl.querySelector('[data-score]'), p.score);
+    updateHud(hudEl, { pop: r.index });
+
+    const next = res.querySelector('[data-next]');
+    setTimeout(() => next.focus({ preventScroll: true }), 50);
+    next.addEventListener('click', () => {
+      if (last) return renderResults();
+      promptCard(card, hudEl);
+      updateHud(hudEl);
+    });
+  }
+
+  // ---------------------------------------------------------------- results
+  const RANKS = [
+    [0, 'Puddle Paddler'], [0.15, 'Reef Wader'], [0.3, 'Kelp Climber'],
+    [0.45, 'Trench Diver'], [0.6, 'Abyss Walker'], [0.75, 'Leviathan Hunter'], [0.9, 'Mansellion Tamer'],
+  ];
+
+  function renderResults() {
+    const p = S.play;
+    ocean.setMode('dive');
+    ocean.setDepth(depthSoFar(), { burst: false });
+    const max = p.total * 100;
+    const frac = max ? p.score / max : 0;
+    const rank = RANKS.filter(([f]) => frac >= f).pop()[1];
+
+    const node = h(`<section class="screen results">
+      <div class="score-panel px-box">
+        <div class="kicker">DIVE COMPLETE · ${esc(fmtDate(S.today, { month: 'short', day: 'numeric' }).toUpperCase())}</div>
+        <div class="rank">${esc(rank)}</div>
+        <div class="big-score"><span data-count>0</span><small>PTS</small></div>
+        <div class="score-sub">↓ ${depthSoFar()}M DEEP · MAX ${max}</div>
+        ${p.total < 5 ? `<p class="footnote">(out of ${p.total} question${p.total === 1 ? '' : 's'} today)</p>` : ''}
+        <div class="share-row">
+          <button class="btn small" data-share>SHARE</button>
+          <button class="btn small blue" data-y>YESTERDAY</button>
+        </div>
+        <div class="countdown">Next dive in<b data-cd>--:--:--</b></div>
+      </div>
+      <div class="section px-box"></div>
+      <div class="section px-box">
+        <h3>POINTS PER PROMPT</h3><p class="sub">Each guess, by how rare it was.</p>
+        <div data-bars></div>
+      </div>
+      <div class="section px-box">
+        <h3>DIVE PROFILE</h3><p class="sub">Your depth after each prompt.</p>
+        <div data-profile></div>
+      </div>
+      <div class="section px-box">
+        <h3>YOUR GUESSES</h3><p class="sub">What you said, and where it landed.</p>
+        <ul class="guess-list"></ul>
+      </div>
+    </section>`);
+
+    const statsSec = node.querySelectorAll('.section')[0];
+    statsSec.append(h('<h3 style="margin-bottom:12px">YOUR STATS</h3>'), statsRow());
+
+    node.querySelector('[data-bars]').append(Charts.bars(p.guesses, p.total, tiers));
+    node.querySelector('[data-profile]').append(Charts.profile(p.guesses, p.total, tiers));
+
+    const list = node.querySelector('.guess-list');
+    p.guesses.forEach((g, i) => {
+      const t = tierBy[g.tier];
+      const row = h(`<li class="guess-row" style="--tc:${tierColor(g.tier)};animation-delay:${200 + i * 80}ms">
+        <div></div>
+        <div><div class="q">P${i + 1} · ${esc(g.prompt)}</div><div class="a">${esc(g.guess)}${g.corrected && g.matched ? ` <small>→ ${esc(g.matched)}</small>` : ''}</div></div>
+        <div class="p">+${g.points}<small>${t ? esc(t.name).toUpperCase() : 'MISS'}</small></div>
+      </li>`);
+      row.firstElementChild.replaceWith(Sprites.img(t ? g.tier : 'bubble', t ? 3 : 6));
+      list.append(row);
+    });
+
+    node.querySelector('[data-share]').addEventListener('click', share);
+    node.querySelector('[data-y]').addEventListener('click', renderYesterday);
+    show(node, 'results');
+
+    // Count-up.
+    const el = node.querySelector('[data-count]');
+    const start = performance.now(), dur = Math.min(1600, 400 + p.score * 4);
+    const tick = now => {
+      const f = Math.min(1, (now - start) / dur);
+      el.textContent = Math.round(p.score * (1 - Math.pow(1 - f, 3)));
+      if (f < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    startCountdown(node.querySelector('[data-cd]'));
+  }
+
+  function startCountdown(el) {
+    clearInterval(startCountdown._i);
+    const upd = async () => {
+      if (!el.isConnected) return clearInterval(startCountdown._i);
+      const ms = resetAt - Date.now();
+      if (ms <= 0) {
+        clearInterval(startCountdown._i);
+        await load();
+        toast('A new dive is ready!');
+        return renderTitle();
+      }
+      const s = Math.floor(ms / 1000);
+      el.textContent = [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map(n => String(n).padStart(2, '0')).join(':');
+    };
+    upd();
+    startCountdown._i = setInterval(upd, 1000);
+  }
+
+  async function share() {
+    const p = S.play;
+    const text = [
+      `MANSELLION · ${fmtDate(S.today, { month: 'short', day: 'numeric' })}`,
+      p.guesses.map(g => EMOJI[g.tier || 'miss']).join(''),
+      `↓${depthSoFar()}m · ${p.score} pts${p.total < 5 ? ` (out of ${p.total})` : ''}`,
+      location.origin,
+    ].join('\n');
+    try {
+      if (navigator.share && matchMedia('(pointer: coarse)').matches) await navigator.share({ text });
+      else { await navigator.clipboard.writeText(text); toast('Copied to clipboard!'); }
+    } catch (e) {
+      if (e?.name !== 'AbortError') toast('Couldn’t copy — try again.', 'error');
+    }
+  }
+
+  // -------------------------------------------------------------- yesterday
+  async function renderYesterday() {
+    const loading = h('<section class="screen"><div class="loading">SONAR<span>…</span></div></section>');
+    show(loading, 'yesterday');
+    let Y;
+    try { Y = await api('/api/yesterday'); }
+    catch (e) { toast(e.message, 'error'); return renderTitle(); }
+    if (view !== 'yesterday') return;
+
+    const node = h(`<section class="screen yesterday">
+      <div class="y-head px-box">
+        <div class="kicker">YESTERDAY’S DEPTHS</div>
+        <h2>${esc(fmtDate(Y.date).toUpperCase())}</h2>
+        <button class="btn small ghost" data-back>◂ BACK</button>
+      </div>
+    </section>`);
+    node.querySelector('[data-back]').addEventListener('click', () => (S.play.done ? renderResults() : renderTitle()));
+
+    if (!Y.prompts.length) {
+      const empty = h(`<div class="section px-box calm"><div class="art"></div><p class="empty">No prompts were set yesterday.</p></div>`);
+      empty.querySelector('.art').append(Sprites.img('jelly', 5));
+      node.append(empty);
+    }
+
+    for (const pr of Y.prompts) {
+      const g = Y.guesses.find(x => x.index === pr.index);
+      const gt = g?.tier ? tierBy[g.tier] : null;
+      const sec = h(`<div class="section px-box y-prompt" style="--tc:${tierColor(g?.tier)}">
+        <div class="kicker">PROMPT ${pr.index + 1}</div>
+        <h4>${esc(pr.text)}</h4>
+        ${g ? `<p class="y-you">You said <b>“${esc(g.guess)}”</b> — ${gt ? `${esc(gt.name)}, +${g.points}` : 'no catch'}</p>` : '<p class="y-you">You didn’t answer this one.</p>'}
+        <div class="y-tiers"></div>
+      </div>`);
+      const wrap = sec.querySelector('.y-tiers');
+      // Deepest first: the good stuff at the top.
+      for (const tt of [...pr.tiers].reverse()) {
+        const t = tierBy[tt.key];
+        const row = h(`<div class="y-tier" style="--tc:${tierColor(t.key)}">
+          <div></div>
+          <div><div class="tn">${esc(t.name).toUpperCase()} <span>· ${t.depth}M · ${t.points}PTS</span></div><div class="chips"></div></div>
+        </div>`);
+        row.firstElementChild.replaceWith(Sprites.img(t.key, 3));
+        const chips = row.querySelector('.chips');
+        const LIMIT = 12;
+        const mk = a => h(`<span class="chip ${g && g.matched === a && g.tier === t.key ? 'you' : ''}">${esc(a)}</span>`);
+        if (!tt.answers.length) chips.append(h('<span class="empty">—</span>'));
+        tt.answers.slice(0, LIMIT).forEach(a => chips.append(mk(a)));
+        if (tt.answers.length > LIMIT) {
+          const more = h(`<button class="chip more">+${tt.answers.length - LIMIT} more</button>`);
+          more.addEventListener('click', () => { more.replaceWith(...tt.answers.slice(LIMIT).map(mk)); });
+          chips.append(more);
+        }
+        wrap.append(row);
+      }
+      node.append(sec);
+    }
+    show(node, 'yesterday');
+  }
+
+  // ------------------------------------------------------------------- boot
+  $('#btn-home').addEventListener('click', () => { if (S) renderTitle(); });
+  $('#btn-help').addEventListener('click', () => { if (S) helpModal(); });
+  $('#btn-yesterday').addEventListener('click', () => { if (S) renderYesterday(); });
+
+  // Coming back to a tab left open overnight: refresh so it's the new day.
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState !== 'visible' || !S || busy) return;
+    if (Date.now() >= resetAt) { await load(); renderTitle(); toast('A new dive is ready!'); }
+  });
+
+  (async function boot() {
+    show(h('<section class="screen"><div class="loading">DIVING<span>…</span></div></section>'), 'loading');
+    try {
+      await load();
+      ocean.setDepth(depthSoFar(), { burst: false });
+      renderTitle();
+      let seen = false;
+      try { seen = localStorage.getItem('msl_seen_help') === '1'; localStorage.setItem('msl_seen_help', '1'); } catch {}
+      if (!seen) setTimeout(helpModal, 500);
+    } catch (e) {
+      screenEl.innerHTML = '';
+      show(h(`<section class="screen"><div class="loading">NO SIGNAL — ${esc(e.message)}</div></section>`), 'error');
+    }
+  })();
+})();
