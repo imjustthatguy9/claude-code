@@ -34,6 +34,7 @@ The file ships with sample prompts for Nov 22–25, 2026. Replace them with your
 - The results page shows your score, a points-per-prompt chart, a dive-depth chart and your guesses. On days with fewer than 5 prompts it adds "(out of N questions today)" under the score.
 - Your current streak, best streak, number of dives and best score are kept. Days with no prompts don't break a streak.
 - **Yesterday's depths** lists every answer in every tier for the day before.
+- After finishing, a **Come back tomorrow** card with a countdown shows when today's best guesses unlock. It appears under your stats on the results page and on the home screen.
 - When a day has no prompts, pressing Play says *the ocean is calm*.
 - **Auto-correct:** capital letters, punctuation, accents, a leading "the/a/an" and simple plurals are ignored. Typos are forgiven based on the answer's length: 1–3 letters must be exact, 4–5 letters allow 1 typo, 6–9 allow 2, and 10 or more allow 3.
 

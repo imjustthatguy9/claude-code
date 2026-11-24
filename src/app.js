@@ -156,6 +156,25 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  /** "Come back tomorrow" card: today's full answer sheet unlocks at midnight. */
+  function comeBackCard(compact = false) {
+    const p = S.play;
+    const gotTop = p.guesses.some(g => g.tier === 'nichion');
+    const line = gotTop
+      ? 'You found a Nichion today. Come back tomorrow to see the rest of the best guesses: every Nichion and Deep Cut answer, revealed.'
+      : 'Come back tomorrow to see today’s best guesses: every Nichion and Deep Cut answer, plus the whole board, revealed.';
+    const card = h(`<div class="comeback ${compact ? 'compact' : ''}">
+      <div class="comeback-art"></div>
+      <div>
+        <div class="comeback-title">COME BACK TOMORROW</div>
+        <p>${compact ? 'See today’s best guesses when the answers unlock.' : line}</p>
+        <div class="comeback-time">Unlocks in <b data-cd>--:--:--</b></div>
+      </div>
+    </div>`);
+    card.querySelector('.comeback-art').append(Sprites.img('nichion', compact ? 2 : 3));
+    return card;
+  }
+
   function statsRow() {
     const st = S.stats;
     return h(`<div class="stats">
@@ -193,6 +212,7 @@ document.addEventListener('DOMContentLoaded', function () {
       </div>
     </section>`);
     node.querySelector('.title-panel > div:last-child').replaceWith(statsRow());
+    if (p.done) { node.querySelector('.title-actions').after(comeBackCard(true)); }
     if (!S.persistent) node.querySelector('.title-status').after(h('<p class="warn-line">This browser isn’t saving progress (private mode?). Your streak won’t be kept.</p>'));
     node.querySelector('[data-play]').addEventListener('click', () => {
       load();
@@ -203,6 +223,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     node.querySelector('[data-y]').addEventListener('click', renderYesterday);
     show(node, 'title');
+    if (p.done) startCountdown(node);
   }
 
   // ------------------------------------------------------------------- game
@@ -467,7 +488,7 @@ document.addEventListener('DOMContentLoaded', function () {
     </section>`);
 
     const statsSec = node.querySelectorAll('.section')[0];
-    statsSec.append(h('<h3 style="margin-bottom:12px">YOUR STATS</h3>'), statsRow());
+    statsSec.append(h('<h3 style="margin-bottom:12px">YOUR STATS</h3>'), statsRow(), comeBackCard());
 
     node.querySelector('[data-bars]').append(Charts.bars(p.guesses, p.total, tiers));
     node.querySelector('[data-profile]').append(Charts.profile(p.guesses, p.total, tiers));
@@ -497,13 +518,15 @@ document.addEventListener('DOMContentLoaded', function () {
       if (f < 1) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
-    startCountdown(node.querySelector('[data-cd]'));
+    startCountdown(node);
   }
 
-  function startCountdown(el) {
+  /** Ticks every [data-cd] inside `scope` down to the next local midnight. */
+  function startCountdown(scope) {
     clearInterval(startCountdown._i);
+    const els = [...scope.querySelectorAll('[data-cd]')];
     const upd = async () => {
-      if (!el.isConnected) return clearInterval(startCountdown._i);
+      if (!scope.isConnected) return clearInterval(startCountdown._i);
       const ms = resetAt - Date.now();
       if (ms <= 0) {
         clearInterval(startCountdown._i);
@@ -512,7 +535,8 @@ document.addEventListener('DOMContentLoaded', function () {
         return renderTitle();
       }
       const s = Math.floor(ms / 1000);
-      el.textContent = [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map(n => String(n).padStart(2, '0')).join(':');
+      const txt = [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map(n => String(n).padStart(2, '0')).join(':');
+      els.forEach(el => { el.textContent = txt; });
     };
     upd();
     startCountdown._i = setInterval(upd, 1000);
