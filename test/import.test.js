@@ -71,11 +71,11 @@ test('[] means a tier with nothing in it', () => {
   assert.equal(promptToText(q), 'animals\n\n[]\n\ncat\nmouse\n\n[]\n\n[]\n\nant');
 });
 
-test('descriptions: *( )* is parsed off the answer and kept through cleanup', () => {
+test('descriptions: *( ) is parsed off the answer and kept through cleanup', () => {
   const E = require('../src/engine');
-  const [q] = E.parseQuestionText('animals\n\nfox *(sly one)*\ncat | kitty *(feline friend)*\n\n[]\n\n[]\n\n[]\n\nowl *(wise)*\n\nCats');
-  assert.deepEqual(q.answers.nichion, ['fox *(sly one)*', 'cat | kitty *(feline friend)*']);
-  assert.deepEqual(q.answers.clever, ['owl *(wise)*']);
+  const [q] = E.parseQuestionText('animals\n\nfox *(sly one)\ncat | kitty *(feline friend)\n\n[]\n\n[]\n\n[]\n\nowl *(wise)\n\nCats');
+  assert.deepEqual(q.answers.nichion, ['fox *(sly one)', 'cat | kitty *(feline friend)']);
+  assert.deepEqual(q.answers.clever, ['owl *(wise)']);
   assert.deepEqual(q.answers.plankton, [], 'Cats is a duplicate of cat (Nichion)');
   assert.deepEqual(q.warnings, []);
   const m = E.matchGuess('kitty', q.answers);
@@ -84,7 +84,7 @@ test('descriptions: *( )* is parsed off the answer and kept through cleanup', ()
   assert.equal(E.matchGuess('sly one', q.answers), null, 'the description is not an answer');
   assert.equal(E.matchGuess('owl', q.answers).desc, 'wise');
   // Other tiers: parsed out of the answer, flagged, never shown.
-  const [r] = E.parseQuestionText('Q\n\n[]\n\n[]\n\ndog *(good boy)*');
+  const [r] = E.parseQuestionText('Q\n\n[]\n\n[]\n\ndog *(good boy)');
   assert.match(r.warnings[0], /Rare has 1 description/);
   assert.equal(E.matchGuess('dog', r.answers).desc, null);
 });
@@ -92,7 +92,7 @@ test('descriptions: *( )* is parsed off the answer and kept through cleanup', ()
 test('descriptions reach the player and the yesterday sheet', () => {
   const E = require('../src/engine');
   const salt = 's';
-  const prompts = [{ text: 'animals', answers: { nichion: ['fox *(sly one)*'], clever: ['owl'], plankton: ['dog'], schooler: [], rare: [], deepcut: [] } }];
+  const prompts = [{ text: 'animals', answers: { nichion: ['fox *(sly one)'], clever: ['owl'], plankton: ['dog'], schooler: [], rare: [], deepcut: [] } }];
   const data = { salt, days: { '2026-03-09': E.encodeDay(salt, '2026-03-09', prompts), '2026-03-10': E.encodeDay(salt, '2026-03-10', prompts) } };
   let v = null; const store = { get: () => v, set: x => { v = JSON.parse(JSON.stringify(x)); } };
   const g = new E.Game(data, store, () => new Date(2026, 2, 10, 12));
@@ -101,4 +101,17 @@ test('descriptions reach the player and the yesterday sheet', () => {
   const nich = y.prompts[0].tiers.find(t => t.key === 'nichion');
   assert.deepEqual(nich.answers, ['fox']);
   assert.deepEqual(nich.descs, ['sly one']);
+});
+
+test('description syntax variants', () => {
+  const { parseAnswer, formatAnswer } = require('../src/engine');
+  const pa = s => { const a = parseAnswer(s); return [a.spellings, a.desc]; };
+  assert.deepEqual(pa('cat *(feline friend)'), [['cat'], 'feline friend']);
+  assert.deepEqual(pa('cat *(feline friend)*'), [['cat'], 'feline friend'], 'old trailing * still works');
+  assert.deepEqual(pa('cat*(feline friend)'), [['cat'], 'feline friend'], 'no space needed');
+  assert.deepEqual(pa('cat | kitty *( a cat (a big one) )'), [['cat', 'kitty'], 'a cat (a big one)'], 'brackets inside');
+  assert.deepEqual(pa('cat *(feline friend'), [['cat'], 'feline friend'], 'forgot to close');
+  assert.deepEqual(pa('cat *(feline) | kitty'), [['cat', 'kitty'], 'feline'], 'in the middle');
+  assert.deepEqual(pa('Life (board game)'), [['Life (board game)'], null], 'plain brackets are part of the answer');
+  assert.equal(formatAnswer(['cat', 'kitty'], 'feline friend'), 'cat | kitty *(feline friend)');
 });

@@ -22,22 +22,32 @@
 
   // --------------------------------------------------------------- matching
   // Admin answer lines: "New York City | NYC | Big Apple" — first is shown.
-  // An optional description goes in *( … )*:  "cat | kitty *(feline friend)*".
-  // Players see it for Nichion and Too Clever answers.
-  const DESC_RE = /\*\(\s*([\s\S]*?)\s*\)\*/;
+  // An optional description goes after an asterisk + parentheses:
+  //   "cat | kitty *(feline friend)"
+  // Players see it for Nichion and Too Clever answers. Also accepted: a
+  // trailing asterisk "*(…)*", brackets inside "*(a (big) cat)", and a
+  // forgotten closing bracket "*(feline friend".
+  const DESC_RE = /\*\(/;                                      // "has a description?"
+  const DESC_PATTERNS = [
+    /\*\(\s*(.*)\)\s*\*?\s*$/,        // at the end of the line, up to the last ")"
+    /\*\(\s*([^)]*?)\s*\)\s*\*?/,     // somewhere in the middle
+    /\*\(\s*(.*)$/,                    // never closed
+  ];
   const DESC_TIERS = ['nichion', 'clever'];
 
   function parseAnswer(line) {
     let str = String(line);
     let desc = null;
-    const m = str.match(DESC_RE);
-    if (m) { desc = m[1].replace(/\s+/g, ' ').trim() || null; str = str.replace(DESC_RE, ' '); }
+    for (const re of DESC_PATTERNS) {
+      const m = str.match(re);
+      if (m) { desc = m[1].replace(/\s+/g, ' ').trim() || null; str = str.replace(re, ' '); break; }
+    }
     const spellings = str.split('|').map(s => s.trim()).filter(Boolean);
     return spellings.length ? { display: spellings[0], spellings, desc } : null;
   }
 
   /** Rebuild an answer line from its parts. */
-  const formatAnswer = (spellings, desc) => spellings.join(' | ') + (desc ? ` *(${desc})*` : '');
+  const formatAnswer = (spellings, desc) => spellings.join(' | ') + (desc ? ` *(${desc})` : '');
 
   function normalize(s) {
     return String(s)

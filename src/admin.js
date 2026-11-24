@@ -341,7 +341,7 @@
         <li>Capitals, punctuation, accents, “the/a/an” and simple plurals are ignored. Small typos are auto-corrected (none for 1–3 letters, 1 for 4–5, 2 for 6–9, 3 for 10+).</li>
         <li><b>📝 Paste as text:</b> question on the first line, a blank line, then answer groups deepest first (Nichion, Deep Cut, Rare, Schooler, Too Clever, Plankton), with a blank line between groups. Pasting that straight into a question box works too.</li>
         <li><b>Duplicates are cleaned up for you.</b> If the same answer (or a near-identical spelling, plural or typo) is in more than one tier, the deepest tier keeps it and the others are removed when you save.</li>
-        <li><b>Descriptions:</b> add <code>*(…)*</code> after a Nichion or Too Clever answer, like <code>cat *(feline friend)*</code>. Players see it when they land that answer and on the next day’s answer sheet.</li>
+        <li><b>Descriptions:</b> add <code>*(…)</code> after a Nichion or Too Clever answer, like <code>cat *(feline friend)</code>. Players see it when they land that answer and on the next day’s answer sheet.</li>
         <li>Anything not listed scores 0. A day with fewer than ${MAXP} prompts still works; the score page notes “(out of N questions today)”.</li>
         <li><b>Save Day</b> keeps your edits in this browser. <b>Download game file</b> makes a new <code>nichion.html</code> with everything inside it; share that file.</li>
       </ul>
@@ -415,7 +415,7 @@
       const id = `ta${i}-${t.key}`;
       const box = h(`<div class="tbox" style="--tc:var(--t-${t.key})">
         <label for="${id}"><b>${esc(t.name.toUpperCase())}<br>${t.depth}M · ${t.points}PTS</b><small data-count></small></label>
-        <textarea id="${id}" spellcheck="false" placeholder="${E.DESC_TIERS.includes(t.key) ? 'One answer per line&#10;cat *(feline friend)* adds a description' : 'One answer per line'}"></textarea>
+        <textarea id="${id}" spellcheck="false" placeholder="${E.DESC_TIERS.includes(t.key) ? 'One answer per line&#10;cat *(feline friend) adds a description' : 'One answer per line'}"></textarea>
         <div class="warn" data-warn></div>
       </div>`);
       box.querySelector('label').prepend(Sprites.img(t.key, 2));
@@ -646,7 +646,7 @@
           <li>Then answer groups, one answer per line, with a blank line between groups, <b>deepest first</b>:
             <span class="fmt-order">${E.TEXT_ORDER.map(k => `<i style="--tc:var(--t-${k})">${esc(E.TIER_BY_KEY[k].name)}</i>`).join('<span>→</span>')}</span></li>
           <li>Put <code>[]</code> on its own line for a tier with nothing in it. Stop early to leave the shallow tiers empty.</li>
-          <li><code>cat *(feline friend)*</code> adds a description, shown to players for <b>Nichion</b> and <b>Too Clever</b> answers.</li>
+          <li><code>cat *(feline friend)</code> adds a description, shown to players for <b>Nichion</b> and <b>Too Clever</b> answers.</li>
           <li><code>NYC | New York City</code> adds extra spellings. A <code>---</code> line starts another question.</li>
         </ul>
       </div>
