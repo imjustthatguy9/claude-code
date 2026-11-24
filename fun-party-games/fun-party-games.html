@@ -368,25 +368,6 @@ body.flash::after { content: ''; position: fixed; inset: 0; background: #fff; z-
 .link { display: block; margin: 8px auto 4px; font-size: 15px; color: var(--ink-soft); text-decoration: underline; }
 
 /* ---------- Draft ---------- */
-.wallets { display: flex; gap: 8px; overflow-x: auto; padding: 4px 4px 10px; margin: -4px -16px 6px; padding-left: 16px; padding-right: 16px; scrollbar-width: none; }
-.wallets::-webkit-scrollbar { display: none; }
-.wallet { flex: none; width: 74px; display: flex; flex-direction: column; align-items: center; padding: 5px 4px 6px; background: var(--paper); box-shadow: inset 0 0 0 3px #e2daee; position: relative; }
-.wallet img { width: 32px; height: 32px; }
-.w-name { font-size: 13px; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.w-money { font: 11px/1.5 var(--head); color: var(--green); }
-.slots { display: flex; gap: 2px; margin-top: 2px; }
-.slots i { width: 8px; height: 8px; box-shadow: inset 0 0 0 2px var(--ink); }
-.slots i.f { background: var(--yellow); }
-.wallet.turn { background: #fff3b0; box-shadow: inset 0 0 0 4px var(--ink); }
-.wallet.turn::before { content: ''; position: absolute; top: -2px; left: 50%; margin-left: -6px; border: 6px solid transparent; border-top-color: var(--ink); }
-.wallet.out { opacity: .45; }
-.wallet.out::after { content: 'PASS'; position: absolute; top: 18px; left: 50%; transform: translateX(-50%) rotate(-12deg); font: 9px var(--head); background: var(--ink); color: #fff; padding: 3px 4px 2px; }
-.wallet.full { opacity: .5; }
-.wallet.broke { opacity: .55; }
-.wallet.broke::after { content: 'BROKE'; position: absolute; top: 18px; left: 50%; transform: translateX(-50%) rotate(-12deg); font: 9px var(--head); background: var(--red); color: #fff; padding: 3px 4px 2px; box-shadow: 0 0 0 2px var(--ink); }
-.wallet.broke .w-money { color: var(--red); }
-.wallet.full::after { content: 'FULL'; position: absolute; top: 18px; left: 50%; transform: translateX(-50%) rotate(-12deg); font: 9px var(--head); background: var(--green); color: #fff; padding: 3px 4px 2px; box-shadow: 0 0 0 2px var(--ink); }
-.wallet.lead { background: #dff7e9; box-shadow: inset 0 0 0 4px var(--green); }
 .lot { position: relative; display: flex; flex-direction: column; align-items: center; padding: 10px 12px 10px; background: var(--cream); }
 .lot-set { font: 9px var(--head); text-transform: uppercase; color: var(--ink-soft); }
 .lot-art { width: 104px; height: 104px; margin: 4px 0 0; background: radial-gradient(circle, #fff3b0 0 55%, transparent 56%); display: grid; place-items: center; }
@@ -451,13 +432,55 @@ img.inline { display: inline-block; width: 22px; height: 22px; vertical-align: -
 }
 
 .draft .bar { margin-bottom: 10px; }
-.draft .wallets { padding-bottom: 6px; }
 .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
 .panel-head h2 { margin: 0; }
 .allnone { display: flex; gap: 6px; }
 .allnone button { font: 9px var(--head); text-transform: uppercase; padding: 8px 8px 6px; background: #f1edf7; box-shadow: inset 0 0 0 3px var(--ink); }
 .allnone button:active { background: var(--yellow); }
 .pick-note { margin: 0 0 10px; }
+
+/* ---------- Imposter: who goes first + reveal ---------- */
+.talk { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding-bottom: 40px; }
+.first { display: flex; flex-direction: column; align-items: center; padding: 16px 28px 14px; background: #fff3b0; }
+.first img { width: 96px; height: 96px; margin-bottom: 6px; }
+.first b { font: 18px/1.5 var(--head); text-align: center; overflow-wrap: anywhere; }
+.talk .reveal-btn { min-height: 76px; font-size: 15px; }
+
+/* ---------- Bomb on the table ---------- */
+.bomb-live { justify-content: center; align-items: center; position: relative; min-height: 100vh; min-height: 100dvh; }
+.bomb-live .bomb-wrap { width: min(94vw, 64vh, 500px); }
+.live-cat { position: absolute; top: calc(14px + env(safe-area-inset-top)); left: 60px; right: 60px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 17px; color: var(--ink-soft); text-align: center; }
+.live-cat img { width: 26px; height: 26px; flex: none; opacity: .8; }
+.live-stop { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 12px; width: 40px; height: 40px; font-size: 16px; color: var(--ink-soft); background: rgba(255,255,255,.6); box-shadow: inset 0 0 0 3px #e2daee; }
+.boom-center { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.boom-center .boom-word { font-size: clamp(54px, 18vw, 96px); }
+
+/* ---------- Draft: a column per player ---------- */
+.pcols { display: flex; gap: 6px; overflow-x: auto; margin: 0 -16px 10px; padding: 6px 16px 4px; scrollbar-width: none; }
+.pcols::-webkit-scrollbar { display: none; }
+.pcol { flex: 1 0 66px; max-width: 110px; display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 4px; background: var(--paper); box-shadow: inset 0 0 0 3px #e2daee; position: relative; }
+.pcol-head { display: flex; flex-direction: column; align-items: center; padding-bottom: 2px; }
+.pcol-head img { width: 32px; height: 32px; }
+.pick { height: 40px; display: flex; align-items: center; justify-content: center; gap: 2px; background: var(--cream); box-shadow: inset 0 0 0 2px #eee4f8; }
+.pick img { width: 30px; height: 30px; }
+.pick b { font: 8px var(--head); color: var(--green); }
+.pick.empty { background: repeating-linear-gradient(45deg, #f6f2fb 0 4px, #fff 4px 8px); box-shadow: inset 0 0 0 2px #e8e0f2; }
+.pcol.turn { background: #fff3b0; box-shadow: inset 0 0 0 4px var(--ink); }
+.pcol.turn::before { content: ''; position: absolute; top: -6px; left: 50%; margin-left: -6px; border: 6px solid transparent; border-top-color: var(--ink); }
+.pcol.lead { background: #dff7e9; box-shadow: inset 0 0 0 4px var(--green); }
+.pcol.out .pcol-head, .pcol.broke .pcol-head, .pcol.full .pcol-head { opacity: .5; }
+.pcol.out::after, .pcol.broke::after, .pcol.full::after { position: absolute; top: 14px; left: 50%; transform: translateX(-50%) rotate(-12deg); font: 8px var(--head); color: #fff; padding: 3px 4px 2px; box-shadow: 0 0 0 2px var(--ink); }
+.pcol.out::after { content: 'PASS'; background: var(--ink); }
+.pcol.broke::after { content: 'BROKE'; background: var(--red); }
+.pcol.full::after { content: 'FULL'; background: var(--green); }
+.pcol.broke .w-money { color: var(--red); }
+.draft .lot { flex-direction: row; align-items: center; gap: 12px; padding: 8px 12px; text-align: left; }
+.draft .lot-art { width: 84px; height: 84px; flex: none; margin: 0; }
+.draft .lot-art img { width: 72px; height: 72px; }
+.draft .lot-name { text-align: left; font-size: 15px; }
+.lot-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.w-name { font-size: 13px; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.w-money { font: 10px/1.6 var(--head); color: var(--green); }
 
 </style>
 </head>
@@ -3568,13 +3591,10 @@ function setupCover(el, onPeek) {
 function impDiscuss() {
   render(`<div class="screen">
     ${bar('Imposter')}
-    <div class="hero">
-      <h2 class="big-title">Everyone's in!</h2>
-      <div class="starter box">${img(R.starter.char, 'hop')}<div><span class="tiny">First to talk</span><b>${esc(nm(R.starter))}</b></div></div>
-      <p class="sub center">Go around the circle. Everyone says <b>one word</b> about the secret. Then point at who you think is the imposter!</p>
-      <div class="crowd">${S.players.map((p, i) => `<span class="mini">${img(p.char, 'hop', `style="animation-delay:${i * 0.1}s"`)}<span>${esc(nm(p))}</span></span>`).join('')}</div>
+    <div class="talk">
+      <div class="first box">${img(R.starter.char, 'hop')}<span class="tiny">Goes first</span><b>${esc(nm(R.starter))}</b></div>
+      <button class="btn big reveal-btn" style="--c:var(--red);--t:#fff" data-a="reveal">${img('spy')} Reveal imposter</button>
     </div>
-    <div class="dock"><button class="btn big reveal-btn" style="--c:var(--red);--t:#fff" data-a="reveal">${img('spy')} Reveal imposter</button></div>
   </div>`, { back: quitImp, reveal: impSuspense });
 }
 function impSuspense() {
@@ -3630,10 +3650,10 @@ function bombSetup(keep) {
       <p class="tiny">The exact moment it blows is always random.</p>
     </section>
     <section class="panel box how"><h2>How to play</h2><ol>
-      <li>The starter lights the fuse and names something in the category.</li>
-      <li>Pass the phone to the next person. They name something new, and pass again!</li>
+      <li>Put the phone in the middle of the table and light the fuse.</li>
+      <li>Starting with the first player, go around the circle naming something that fits the category.</li>
       <li>The bomb sits quietly… then blinks red and beeps… then beeps <b>fast</b>…</li>
-      <li><b>BOOM!</b> Whoever is holding it loses the round.</li></ol></section>
+      <li><b>BOOM!</b> Whoever's turn it is loses the round.</li></ol></section>
     <div class="dock"><button class="btn big" style="--c:var(--red);--t:#fff" data-a="go">Let's go ▶</button></div>
   </div>`, {
     back: home,
@@ -3654,7 +3674,7 @@ function bombReady() {
   render(`<div class="screen bomb-screen">
     ${bar('Who Has the Bomb?')}
     <div class="cat box" id="cat">${catHTML(B.cat)}</div>
-    <div class="starter-line" id="starter">${img(B.starter.char, 'hop')}<span><b>${esc(nm(B.starter))}</b> starts!</span></div>
+    <div class="starter-line" id="starter">${img(B.starter.char, 'hop')}<span><b>${esc(nm(B.starter))}</b> goes first!</span></div>
     <div class="bomb-stage">
       <div class="bomb-wrap idle" id="bomb">
         <img class="px bomb-img" id="bombImg" src="${sprURL(bombRows(false))}" alt="Bomb" draggable="false">
@@ -3662,7 +3682,7 @@ function bombReady() {
       </div>
       <div class="bomb-shadow"></div>
     </div>
-    <p class="status" id="status">Light the fuse, say your answer, and pass!</p>
+    <p class="status" id="status">Set the phone in the middle of the table and light the fuse!</p>
     <div class="dock row2" id="dock"><button class="btn" data-a="newcat" style="--c:#fff">↻ New category</button>
       <button class="btn" style="--c:var(--orange)" data-a="light">Light fuse!</button></div>
   </div>`, {
@@ -3680,19 +3700,28 @@ function bombLight() {
   const start = performance.now();
   B.live = true; B.t = [t1, t2, t3];
   keepAwake();
-  $('#dock').innerHTML = '<button class="btn quiet" data-a="stop" style="--c:#fff">■ Defuse</button>';
-  $('#starter').innerHTML = `${img(B.starter.char)}<span><b>${esc(nm(B.starter))}</b>: say one and pass it!</span>`;
-  $('#spark').hidden = false;
-  const bomb = $('#bomb'), pic = $('#bombImg'), status = $('#status');
+  // Just the bomb, big, in the middle of the table.
+  render(`<div class="screen bomb-live">
+    <div class="live-cat">${img(B.cat.i)}<span>${esc(B.cat.t)}</span></div>
+    <div class="bomb-wrap live s1" id="bomb">
+      <img class="px bomb-img" id="bombImg" src="${sprURL(bombRows(false))}" alt="Bomb" draggable="false">
+      <span class="spark" id="spark"><img class="px a" src="${sprURL(SPARK_A)}" alt=""><img class="px b" src="${sprURL(SPARK_B)}" alt=""></span>
+    </div>
+    <div class="boom-center" id="boomWord"></div>
+    <button class="live-stop" id="liveStop" data-a="stop" aria-label="Defuse the bomb">✕</button>
+  </div>`, {
+    back() { confirmBox('Stop the bomb and leave?', 'Leave', () => { bombStop(); bombSetup(); }); },
+    stop() { confirmBox('Defuse the bomb? (Nobody loses)', 'Defuse', () => { bombStop(); bombReady(); }); },
+  });
+  const bomb = $('#bomb'), pic = $('#bombImg');
   const dark = sprURL(bombRows(false)), lit = sprURL(bombRows(true));
   let on = false, stage = 0;
-  const say = ['', 'Tick… tock… pass it on!', 'It\'s beeping! Keep passing!', 'HURRY!!!'];
   (function tick() {
     if (!B.live) return;
     const t = performance.now() - start;
     if (t >= t3) return bombBoom();
     const s = t < t1 ? 1 : t < t2 ? 2 : 3;
-    if (s !== stage) { stage = s; status.textContent = say[s]; status.className = 'status st' + s; bomb.className = 'bomb-wrap live s' + s; }
+    if (s !== stage) { stage = s; bomb.className = 'bomb-wrap live s' + s; }
     if (s === 1) { later(tick, Math.min(t1 - t, 500)); return; }
     on = !on;
     pic.src = on ? lit : dark;
@@ -3707,11 +3736,10 @@ function bombBoom() {
   sfx.boom(); vibrate([400, 80, 300]);
   const r = $('#bomb').getBoundingClientRect();
   fx.explode(r.left + r.width * 0.48, r.top + r.height * 0.58);
+  closeModal();
   $('#bomb').classList.add('gone');
-  $('.bomb-shadow').classList.add('gone');
-  $('#status').innerHTML = '<span class="boom-word">BOOM!</span>';
-  $('#status').className = 'status boom';
-  $('#dock').innerHTML = '';
+  $('#boomWord').innerHTML = '<span class="boom-word">BOOM!</span>';
+  $('#liveStop').hidden = true;
   document.body.classList.add('shake', 'flash');
   later(() => document.body.classList.remove('flash'), 500);
   later(() => { document.body.classList.remove('shake'); bombWho(); }, 1500);
@@ -3721,7 +3749,7 @@ function bombWho() {
     ${bar('BOOM!')}
     <div class="hero">
       <div class="boom-art">${img(bombRows(true), 'wobble')}</div>
-      <h2 class="big-title">Who was holding it?</h2>
+      <h2 class="big-title">Whose turn was it?</h2>
       <div class="cat box small">${catHTML(B.cat)}</div>
       <div class="who-grid">${S.players.map((p, i) => `<button class="who box" data-a="loser" data-i="${i}">${img(p.char)}<span>${esc(nm(p))}</span></button>`).join('')}</div>
     </div>
@@ -3820,17 +3848,18 @@ function draftNextLot() {
   sfx.pop();
   draftScreen();
 }
-function slotsHTML(p) {
-  return Array.from({ length: D.picks }, (_, i) => `<i class="${i < D.team[p.id].length ? 'f' : ''}"></i>`).join('');
-}
 function draftScreen() {
   const L = D.lot, cur = byId(L.turn), holder = L.holder && byId(L.holder);
   const allFull = S.players.every(p => needs(p) <= 0);
-  const wallets = S.players.map(p => {
+  const cols = S.players.map(p => {
     const full = needs(p) <= 0;
     const isBroke = !full && D.money[p.id] <= 0;
     const cls = [!L.done && p.id === L.turn ? 'turn' : '', L.out.has(p.id) && !full && !isBroke ? 'out' : '', full ? 'full' : '', isBroke && p.id !== L.holder ? 'broke' : '', p.id === L.holder ? 'lead' : ''].join(' ');
-    return `<div class="wallet ${cls}">${img(p.char)}<span class="w-name">${esc(nm(p))}</span><span class="w-money">$${D.money[p.id]}</span><span class="slots">${slotsHTML(p)}</span></div>`;
+    const picks = Array.from({ length: D.picks }, (_, i) => {
+      const it = D.team[p.id][i];
+      return it ? `<div class="pick" title="${esc(it.name)} ($${it.price})">${img(it.icon)}<b>$${it.price}</b></div>` : '<div class="pick empty"></div>';
+    }).join('');
+    return `<div class="pcol ${cls}"><div class="pcol-head">${img(p.char)}<span class="w-name">${esc(nm(p))}</span><span class="w-money">$${D.money[p.id]}</span></div>${picks}</div>`;
   }).join('');
   const bidline = holder
     ? `<div class="bidline">Top bid <b class="bid">$${L.bid}</b> ${img(holder.char)} <b>${esc(nm(holder))}</b></div>`
@@ -3859,11 +3888,10 @@ function draftScreen() {
   }
   render(`<div class="screen draft">
     ${bar('$20 Draft', { extra: `<span class="step">#${D.n}</span>` })}
-    <div class="wallets">${wallets}</div>
+    <div class="pcols">${cols}</div>
     <div class="lot box ${L.fresh ? 'enter' : ''}">
-      <span class="lot-set">${esc(L.item.setName)}</span>
       <div class="lot-art">${img(L.item.icon, L.fresh ? 'pop' : '')}</div>
-      <div class="lot-name">${esc(L.item.name)}</div>
+      <div class="lot-text"><span class="lot-set">Up for grabs · ${esc(L.item.setName)}</span><div class="lot-name">${esc(L.item.name)}</div></div>
     </div>
     ${bidline}
     ${lower}
@@ -3877,7 +3905,7 @@ function draftScreen() {
     nextLot: draftNextLot,
   }, { keepScroll: !L.fresh });
   L.fresh = false;
-  const turnEl = $('.wallet.turn');
+  const turnEl = $('.pcol.turn');
   if (turnEl) turnEl.scrollIntoView({ block: 'nearest', inline: 'center' });
   function setAmt(v) {
     L.amt = Math.max(minBid(), Math.min(maxBid(cur), v));
@@ -3915,7 +3943,7 @@ function draftAct(kind) {
   if (L.holder) sfx.sold(); else sfx.sad();
 }
 function draftResults(view) {
-  view = view || 'teams';
+  view = view || 'side';
   const ps = S.players;
   const spent = p => BUDGET - D.money[p.id];
   const teams = ps.map(p => `
@@ -3935,7 +3963,7 @@ function draftResults(view) {
     ${bar('Draft Results')}
     <h2 class="big-title center">Draft complete!</h2>
     <p class="sub center">Who built the best team? Argue it out, then tap ${img('crown', 'inline')} to crown a winner.</p>
-    <div class="tabs"><button class="tab ${view === 'teams' ? 'on' : ''}" data-a="teams">Teams</button><button class="tab ${view === 'side' ? 'on' : ''}" data-a="side">Side by side</button></div>
+    <div class="tabs"><button class="tab ${view === 'side' ? 'on' : ''}" data-a="side">Side by side</button><button class="tab ${view === 'teams' ? 'on' : ''}" data-a="teams">Team cards</button></div>
     ${view === 'teams' ? `<div class="teams">${teams}</div>` : side}
     <div class="dock row2"><button class="btn" data-a="home" style="--c:#fff">Home</button>
       <button class="btn" style="--c:var(--green)" data-a="again">New draft ▶</button></div>

@@ -440,13 +440,10 @@ function setupCover(el, onPeek) {
 function impDiscuss() {
   render(`<div class="screen">
     ${bar('Imposter')}
-    <div class="hero">
-      <h2 class="big-title">Everyone's in!</h2>
-      <div class="starter box">${img(R.starter.char, 'hop')}<div><span class="tiny">First to talk</span><b>${esc(nm(R.starter))}</b></div></div>
-      <p class="sub center">Go around the circle. Everyone says <b>one word</b> about the secret. Then point at who you think is the imposter!</p>
-      <div class="crowd">${S.players.map((p, i) => `<span class="mini">${img(p.char, 'hop', `style="animation-delay:${i * 0.1}s"`)}<span>${esc(nm(p))}</span></span>`).join('')}</div>
+    <div class="talk">
+      <div class="first box">${img(R.starter.char, 'hop')}<span class="tiny">Goes first</span><b>${esc(nm(R.starter))}</b></div>
+      <button class="btn big reveal-btn" style="--c:var(--red);--t:#fff" data-a="reveal">${img('spy')} Reveal imposter</button>
     </div>
-    <div class="dock"><button class="btn big reveal-btn" style="--c:var(--red);--t:#fff" data-a="reveal">${img('spy')} Reveal imposter</button></div>
   </div>`, { back: quitImp, reveal: impSuspense });
 }
 function impSuspense() {
@@ -502,10 +499,10 @@ function bombSetup(keep) {
       <p class="tiny">The exact moment it blows is always random.</p>
     </section>
     <section class="panel box how"><h2>How to play</h2><ol>
-      <li>The starter lights the fuse and names something in the category.</li>
-      <li>Pass the phone to the next person. They name something new, and pass again!</li>
+      <li>Put the phone in the middle of the table and light the fuse.</li>
+      <li>Starting with the first player, go around the circle naming something that fits the category.</li>
       <li>The bomb sits quietly… then blinks red and beeps… then beeps <b>fast</b>…</li>
-      <li><b>BOOM!</b> Whoever is holding it loses the round.</li></ol></section>
+      <li><b>BOOM!</b> Whoever's turn it is loses the round.</li></ol></section>
     <div class="dock"><button class="btn big" style="--c:var(--red);--t:#fff" data-a="go">Let's go ▶</button></div>
   </div>`, {
     back: home,
@@ -526,7 +523,7 @@ function bombReady() {
   render(`<div class="screen bomb-screen">
     ${bar('Who Has the Bomb?')}
     <div class="cat box" id="cat">${catHTML(B.cat)}</div>
-    <div class="starter-line" id="starter">${img(B.starter.char, 'hop')}<span><b>${esc(nm(B.starter))}</b> starts!</span></div>
+    <div class="starter-line" id="starter">${img(B.starter.char, 'hop')}<span><b>${esc(nm(B.starter))}</b> goes first!</span></div>
     <div class="bomb-stage">
       <div class="bomb-wrap idle" id="bomb">
         <img class="px bomb-img" id="bombImg" src="${sprURL(bombRows(false))}" alt="Bomb" draggable="false">
@@ -534,7 +531,7 @@ function bombReady() {
       </div>
       <div class="bomb-shadow"></div>
     </div>
-    <p class="status" id="status">Light the fuse, say your answer, and pass!</p>
+    <p class="status" id="status">Set the phone in the middle of the table and light the fuse!</p>
     <div class="dock row2" id="dock"><button class="btn" data-a="newcat" style="--c:#fff">↻ New category</button>
       <button class="btn" style="--c:var(--orange)" data-a="light">Light fuse!</button></div>
   </div>`, {
@@ -552,19 +549,28 @@ function bombLight() {
   const start = performance.now();
   B.live = true; B.t = [t1, t2, t3];
   keepAwake();
-  $('#dock').innerHTML = '<button class="btn quiet" data-a="stop" style="--c:#fff">■ Defuse</button>';
-  $('#starter').innerHTML = `${img(B.starter.char)}<span><b>${esc(nm(B.starter))}</b>: say one and pass it!</span>`;
-  $('#spark').hidden = false;
-  const bomb = $('#bomb'), pic = $('#bombImg'), status = $('#status');
+  // Just the bomb, big, in the middle of the table.
+  render(`<div class="screen bomb-live">
+    <div class="live-cat">${img(B.cat.i)}<span>${esc(B.cat.t)}</span></div>
+    <div class="bomb-wrap live s1" id="bomb">
+      <img class="px bomb-img" id="bombImg" src="${sprURL(bombRows(false))}" alt="Bomb" draggable="false">
+      <span class="spark" id="spark"><img class="px a" src="${sprURL(SPARK_A)}" alt=""><img class="px b" src="${sprURL(SPARK_B)}" alt=""></span>
+    </div>
+    <div class="boom-center" id="boomWord"></div>
+    <button class="live-stop" id="liveStop" data-a="stop" aria-label="Defuse the bomb">✕</button>
+  </div>`, {
+    back() { confirmBox('Stop the bomb and leave?', 'Leave', () => { bombStop(); bombSetup(); }); },
+    stop() { confirmBox('Defuse the bomb? (Nobody loses)', 'Defuse', () => { bombStop(); bombReady(); }); },
+  });
+  const bomb = $('#bomb'), pic = $('#bombImg');
   const dark = sprURL(bombRows(false)), lit = sprURL(bombRows(true));
   let on = false, stage = 0;
-  const say = ['', 'Tick… tock… pass it on!', 'It\'s beeping! Keep passing!', 'HURRY!!!'];
   (function tick() {
     if (!B.live) return;
     const t = performance.now() - start;
     if (t >= t3) return bombBoom();
     const s = t < t1 ? 1 : t < t2 ? 2 : 3;
-    if (s !== stage) { stage = s; status.textContent = say[s]; status.className = 'status st' + s; bomb.className = 'bomb-wrap live s' + s; }
+    if (s !== stage) { stage = s; bomb.className = 'bomb-wrap live s' + s; }
     if (s === 1) { later(tick, Math.min(t1 - t, 500)); return; }
     on = !on;
     pic.src = on ? lit : dark;
@@ -579,11 +585,10 @@ function bombBoom() {
   sfx.boom(); vibrate([400, 80, 300]);
   const r = $('#bomb').getBoundingClientRect();
   fx.explode(r.left + r.width * 0.48, r.top + r.height * 0.58);
+  closeModal();
   $('#bomb').classList.add('gone');
-  $('.bomb-shadow').classList.add('gone');
-  $('#status').innerHTML = '<span class="boom-word">BOOM!</span>';
-  $('#status').className = 'status boom';
-  $('#dock').innerHTML = '';
+  $('#boomWord').innerHTML = '<span class="boom-word">BOOM!</span>';
+  $('#liveStop').hidden = true;
   document.body.classList.add('shake', 'flash');
   later(() => document.body.classList.remove('flash'), 500);
   later(() => { document.body.classList.remove('shake'); bombWho(); }, 1500);
@@ -593,7 +598,7 @@ function bombWho() {
     ${bar('BOOM!')}
     <div class="hero">
       <div class="boom-art">${img(bombRows(true), 'wobble')}</div>
-      <h2 class="big-title">Who was holding it?</h2>
+      <h2 class="big-title">Whose turn was it?</h2>
       <div class="cat box small">${catHTML(B.cat)}</div>
       <div class="who-grid">${S.players.map((p, i) => `<button class="who box" data-a="loser" data-i="${i}">${img(p.char)}<span>${esc(nm(p))}</span></button>`).join('')}</div>
     </div>
@@ -692,17 +697,18 @@ function draftNextLot() {
   sfx.pop();
   draftScreen();
 }
-function slotsHTML(p) {
-  return Array.from({ length: D.picks }, (_, i) => `<i class="${i < D.team[p.id].length ? 'f' : ''}"></i>`).join('');
-}
 function draftScreen() {
   const L = D.lot, cur = byId(L.turn), holder = L.holder && byId(L.holder);
   const allFull = S.players.every(p => needs(p) <= 0);
-  const wallets = S.players.map(p => {
+  const cols = S.players.map(p => {
     const full = needs(p) <= 0;
     const isBroke = !full && D.money[p.id] <= 0;
     const cls = [!L.done && p.id === L.turn ? 'turn' : '', L.out.has(p.id) && !full && !isBroke ? 'out' : '', full ? 'full' : '', isBroke && p.id !== L.holder ? 'broke' : '', p.id === L.holder ? 'lead' : ''].join(' ');
-    return `<div class="wallet ${cls}">${img(p.char)}<span class="w-name">${esc(nm(p))}</span><span class="w-money">$${D.money[p.id]}</span><span class="slots">${slotsHTML(p)}</span></div>`;
+    const picks = Array.from({ length: D.picks }, (_, i) => {
+      const it = D.team[p.id][i];
+      return it ? `<div class="pick" title="${esc(it.name)} ($${it.price})">${img(it.icon)}<b>$${it.price}</b></div>` : '<div class="pick empty"></div>';
+    }).join('');
+    return `<div class="pcol ${cls}"><div class="pcol-head">${img(p.char)}<span class="w-name">${esc(nm(p))}</span><span class="w-money">$${D.money[p.id]}</span></div>${picks}</div>`;
   }).join('');
   const bidline = holder
     ? `<div class="bidline">Top bid <b class="bid">$${L.bid}</b> ${img(holder.char)} <b>${esc(nm(holder))}</b></div>`
@@ -731,11 +737,10 @@ function draftScreen() {
   }
   render(`<div class="screen draft">
     ${bar('$20 Draft', { extra: `<span class="step">#${D.n}</span>` })}
-    <div class="wallets">${wallets}</div>
+    <div class="pcols">${cols}</div>
     <div class="lot box ${L.fresh ? 'enter' : ''}">
-      <span class="lot-set">${esc(L.item.setName)}</span>
       <div class="lot-art">${img(L.item.icon, L.fresh ? 'pop' : '')}</div>
-      <div class="lot-name">${esc(L.item.name)}</div>
+      <div class="lot-text"><span class="lot-set">Up for grabs · ${esc(L.item.setName)}</span><div class="lot-name">${esc(L.item.name)}</div></div>
     </div>
     ${bidline}
     ${lower}
@@ -749,7 +754,7 @@ function draftScreen() {
     nextLot: draftNextLot,
   }, { keepScroll: !L.fresh });
   L.fresh = false;
-  const turnEl = $('.wallet.turn');
+  const turnEl = $('.pcol.turn');
   if (turnEl) turnEl.scrollIntoView({ block: 'nearest', inline: 'center' });
   function setAmt(v) {
     L.amt = Math.max(minBid(), Math.min(maxBid(cur), v));
@@ -787,7 +792,7 @@ function draftAct(kind) {
   if (L.holder) sfx.sold(); else sfx.sad();
 }
 function draftResults(view) {
-  view = view || 'teams';
+  view = view || 'side';
   const ps = S.players;
   const spent = p => BUDGET - D.money[p.id];
   const teams = ps.map(p => `
@@ -807,7 +812,7 @@ function draftResults(view) {
     ${bar('Draft Results')}
     <h2 class="big-title center">Draft complete!</h2>
     <p class="sub center">Who built the best team? Argue it out, then tap ${img('crown', 'inline')} to crown a winner.</p>
-    <div class="tabs"><button class="tab ${view === 'teams' ? 'on' : ''}" data-a="teams">Teams</button><button class="tab ${view === 'side' ? 'on' : ''}" data-a="side">Side by side</button></div>
+    <div class="tabs"><button class="tab ${view === 'side' ? 'on' : ''}" data-a="side">Side by side</button><button class="tab ${view === 'teams' ? 'on' : ''}" data-a="teams">Team cards</button></div>
     ${view === 'teams' ? `<div class="teams">${teams}</div>` : side}
     <div class="dock row2"><button class="btn" data-a="home" style="--c:#fff">Home</button>
       <button class="btn" style="--c:var(--green)" data-a="again">New draft ▶</button></div>

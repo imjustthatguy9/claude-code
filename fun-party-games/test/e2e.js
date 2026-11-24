@@ -92,6 +92,8 @@ const NAMES = ['Maya', 'Leo', 'Priya', 'Sam', 'Jordan'];
     await tap('#nextBtn');
   }
   assert.strictEqual(roles.filter(Boolean).length, 1, 'exactly one imposter');
+  assert.strictEqual(await page.locator('.crowd').count(), 0, 'no list of everyone on the final screen');
+  assert.strictEqual(await page.locator('.first b').innerText().then(t => t.length > 0), true, 'shows who goes first');
   await shot('09-imposter-discuss');
   await tap('[data-a="reveal"]');
   await page.waitForTimeout(250);
@@ -123,6 +125,9 @@ const NAMES = ['Maya', 'Leo', 'Priya', 'Sam', 'Jordan'];
   await page.evaluate(() => { FUSES.normal = [[1.2, 1.2], [1.4, 1.4], [1.2, 1.2]]; });
   await tap('[data-a="light"]');
   await page.waitForTimeout(500);
+  assert.strictEqual(await page.locator('.bar, .btn, .starter-line, .status').count(), 0, 'live bomb screen shows just the bomb');
+  const bw = await page.locator('#bomb').boundingBox();
+  assert.ok(bw.width > 340, 'bomb fills the screen: ' + bw.width);
   assert.ok(await page.locator('#bomb.s1').count(), 'stage 1: dormant');
   await shot('14-bomb-stage1-dormant');
   await page.waitForTimeout(900);
@@ -130,6 +135,7 @@ const NAMES = ['Maya', 'Leo', 'Priya', 'Sam', 'Jordan'];
   await page.waitForFunction(() => /data:image/.test(document.querySelector('#bombImg').src) && document.querySelector('#bombImg').src !== sprURL(bombRows(false)));
   await page.screenshot({ path: path.join(OUT, '15-bomb-stage2-blinking.png') }); console.log('  📸 15-bomb-stage2-blinking');
   await page.waitForSelector('#bomb.s3', { timeout: 3000 });
+  assert.strictEqual(await page.locator('.bar, .btn, .status').count(), 0, 'still just the bomb while it beeps fast');
   await page.waitForTimeout(250);
   await page.screenshot({ path: path.join(OUT, '16-bomb-stage3-fast.png') }); console.log('  📸 16-bomb-stage3-fast');
   await page.waitForSelector('.boom-word', { timeout: 3000 });
@@ -152,6 +158,8 @@ const NAMES = ['Maya', 'Leo', 'Priya', 'Sam', 'Jordan'];
   await tap('[data-a="set"][data-k="pets"]');
   await shot('20-draft-setup');
   await tap('[data-a="go"]');
+  assert.strictEqual(await page.locator('.pcol').count(), NAMES.length, 'one column per player');
+  assert.strictEqual(await page.locator('.pcol .pick.empty').count(), NAMES.length * 3, 'each column has 3 empty pick slots');
   await shot('21-draft-first-turn');
   // Opening bid, then a raise, then everyone else passes.
   await tap('[data-a="plus"]'); await tap('[data-a="plus"]');
@@ -164,17 +172,18 @@ const NAMES = ['Maya', 'Leo', 'Priya', 'Sam', 'Jordan'];
   await tap('[data-a="bid"]');
   let guard = 0;
   while (!(await page.locator('.sold-banner').count()) && guard++ < 20) await tap('[data-a="pass"]');
+  assert.strictEqual(await page.locator('.pcol .pick:not(.empty) img').count(), 1, 'the won item appears under its owner');
   await shot('23-draft-sold');
   // Play the rest with a simple strategy: random bid or pass.
   guard = 0;
   let freebieShot = false;
-  while (!(await page.locator('.teams').count()) && guard++ < 400) {
+  while (!(await page.locator('.side-wrap').count()) && guard++ < 400) {
     if (!freebieShot && await page.locator('.stamp.free').count()) { freebieShot = true; await shot('23b-draft-freebie'); }
     if (await page.locator('[data-a="nextLot"]').count()) { await tap('[data-a="nextLot"]'); continue; }
     if (Math.random() < 0.45) { await tap('[data-a="plus"]'); await tap('[data-a="bid"]'); }
     else await tap('[data-a="pass"]');
   }
-  assert.ok(await page.locator('.teams').count(), 'draft finished');
+  assert.ok(await page.locator('.side-wrap').count(), 'draft finished');
   assert.ok(await page.evaluate(() => D.freebies >= 2), 'the player who spent $20 got leftovers for free');
   assert.ok(freebieShot, 'a FREEBIE! screen was shown');
   const result = await page.evaluate(() => S.players.map(p => ({ n: D.team[p.id].length, money: D.money[p.id], spent: D.team[p.id].reduce((a, i) => a + i.price, 0) })));
@@ -184,12 +193,14 @@ const NAMES = ['Maya', 'Leo', 'Priya', 'Sam', 'Jordan'];
     assert.strictEqual(r.spent + r.money, 20, 'money adds up');
   }
   await page.waitForTimeout(1500);
-  await shot('24-draft-results-teams');
+  await shot('24-draft-results-columns');
+  await tap('[data-a="teams"]');
   await page.locator('.crown-btn').nth(1).click();
   await page.waitForTimeout(1800);
   await shot('25-draft-crowned');
   await tap('[data-a="side"]');
   await shot('26-draft-side-by-side');
+  await tap('[data-a="teams"]');
 
   // ---- Draft rules stress test (direct, 400 random drafts) ----
   step('draft rules stress test');
