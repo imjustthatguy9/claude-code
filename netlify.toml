@@ -1,0 +1,11 @@
+# Netlify: publish the Fun Party Games folder as the site (no build step needed,
+# fun-party-games.html / index.html are already built and committed).
+[build]
+  publish = "fun-party-games"
+  command = "echo 'Nothing to build: Fun Party Games is prebuilt.'"
+
+# The offline helper must always be checked for updates.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
