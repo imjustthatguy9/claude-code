@@ -23,7 +23,7 @@ art.bombRows(true).forEach((row, y) => [...row].forEach((ch, x) => {
 }));
 const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" shape-rendering="crispEdges">${rects.join('')}</svg>`;
 
-const js = ['art.js', 'data.js', 'app.js'].map(read).join('\n');
+const js = ['art.js', 'art-more.js', 'data.js', 'app.js'].map(read).join('\n');
 if (/<\/script/i.test(js)) throw new Error('JS contains "</script" and would break the inline <script>');
 
 const html = read('index.html')

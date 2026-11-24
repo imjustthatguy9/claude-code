@@ -41,6 +41,13 @@ const S = {
 };
 S.imp.sets = S.imp.sets.filter(id => SETS.some(s => s.id === id));
 S.bomb.packs = S.bomb.packs.filter(id => BOMB_PACKS.some(p => p.id === id));
+// Turn on sets and packs added since this device last saved its settings.
+const seenSets = store.get('seenSets', ['snacks', 'pets', 'powers', 'island', 'house', 'rides', 'sports']);
+const seenPacks = store.get('seenPacks', ['classic', 'words', 'pop', 'silly']);
+SETS.forEach(x => { if (!seenSets.includes(x.id) && !S.imp.sets.includes(x.id)) S.imp.sets.push(x.id); });
+BOMB_PACKS.forEach(x => { if (!seenPacks.includes(x.id) && !S.bomb.packs.includes(x.id)) S.bomb.packs.push(x.id); });
+store.set('seenSets', SETS.map(x => x.id));
+store.set('seenPacks', BOMB_PACKS.map(x => x.id));
 const savePlayers = () => store.set('players', S.players);
 const saveCfg = () => { store.set('imp', S.imp); store.set('bomb', S.bomb); store.set('draft', S.draft); };
 const nm = p => (p.name || '').trim() || `Player ${S.players.indexOf(p) + 1}`;
@@ -205,6 +212,7 @@ function confirmBox(text, yes, onYes) {
   { yes() { closeModal(); onYes(); } });
 }
 function toast(msg, ms = 2000) {
+  toastRoot.innerHTML = '';   // one at a time, newest wins
   const t = document.createElement('div');
   t.className = 'toast box';
   t.innerHTML = msg;
@@ -229,6 +237,7 @@ function bar(title, { back = true, extra = '' } = {}) {
 const chip = (action, key, label, icon, on) =>
   `<button class="chip ${on ? 'on' : ''}" data-a="${action}" data-k="${key}"><img class="px" src="${sprURL(icon)}" alt=""><span>${esc(label)}</span></button>`;
 const toggle = (action, on) => `<button class="tog ${on ? 'on' : ''}" data-a="${action}" role="switch" aria-checked="${on}"><span class="tog-knob"></span><span class="tog-on">ON</span><span class="tog-off">OFF</span></button>`;
+const allNone = (a, n) => `<span class="allnone"><button data-a="${a}">All</button><button data-a="${n}">None</button></span>`;
 const toggleIn = (arr, k) => { const i = arr.indexOf(k); if (i >= 0) arr.splice(i, 1); else arr.push(k); };
 const avatarChip = (p, cls = '') => `<span class="mini ${cls}">${img(p.char)}<span>${esc(nm(p))}</span></span>`;
 
@@ -327,12 +336,13 @@ function charPicker(i) {
 }
 
 // ---- Imposter -----------------------------------------------------------------------
-function impSetup() {
+function impSetup(keep) {
   const n = S.players.length, maxImp = Math.max(1, Math.floor((n - 1) / 2));
   if (S.imp.count > maxImp) S.imp.count = maxImp;
   render(`<div class="screen">
     ${bar('Imposter')}
-    <section class="panel box"><h2>Word sets</h2>
+    <section class="panel box"><div class="panel-head"><h2>Word sets</h2>${allNone('impAll', 'impNone')}</div>
+      <p class="tiny pick-note">Pick as many as you like. <b id="pickCount">${S.imp.sets.length}</b> of ${SETS.length} on.</p>
       <div class="chips">${SETS.map(s => chip('set', s.id, s.name, s.icon, S.imp.sets.includes(s.id))).join('')}</div>
     </section>
     <section class="panel box"><h2>Imposters</h2>
@@ -348,11 +358,13 @@ function impSetup() {
     <div class="dock"><button class="btn big" style="--c:var(--purple);--t:#fff" data-a="go">Deal the cards ▶</button></div>
   </div>`, {
     back: home,
-    set(el) { toggleIn(S.imp.sets, el.dataset.k); saveCfg(); el.classList.toggle('on'); },
+    set(el) { toggleIn(S.imp.sets, el.dataset.k); saveCfg(); el.classList.toggle('on'); $('#pickCount').textContent = S.imp.sets.length; },
+    impAll() { S.imp.sets = SETS.map(x => x.id); saveCfg(); impSetup(true); },
+    impNone() { S.imp.sets = []; saveCfg(); impSetup(true); },
     count(el) { S.imp.count = +el.dataset.k; saveCfg(); document.querySelectorAll('.segb').forEach(b => b.classList.toggle('on', b === el)); },
     hint(el) { S.imp.hint = !S.imp.hint; saveCfg(); el.classList.toggle('on', S.imp.hint); el.setAttribute('aria-checked', S.imp.hint); },
     go() { if (!S.imp.sets.length) { sfx.err(); return toast('Pick at least one word set'); } impStart(); },
-  });
+  }, { keepScroll: !!keep });
 }
 function impStart() {
   const pool = ALL_ITEMS.filter(it => S.imp.sets.includes(it.set));
@@ -478,10 +490,11 @@ let wakeLock = null;
 async function keepAwake() { try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) { wakeLock = null; } }
 function letSleep() { try { if (wakeLock) wakeLock.release(); } catch (e) { /* ignore */ } wakeLock = null; }
 
-function bombSetup() {
+function bombSetup(keep) {
   render(`<div class="screen">
     ${bar('Who Has the Bomb?')}
-    <section class="panel box"><h2>Category packs</h2>
+    <section class="panel box"><div class="panel-head"><h2>Category packs</h2>${allNone('bombAll', 'bombNone')}</div>
+      <p class="tiny pick-note">Pick as many as you like. <b id="pickCount">${S.bomb.packs.length}</b> of ${BOMB_PACKS.length} on.</p>
       <div class="chips">${BOMB_PACKS.map(p => chip('pack', p.id, p.name, p.icon, S.bomb.packs.includes(p.id))).join('')}</div>
     </section>
     <section class="panel box"><h2>Fuse length</h2>
@@ -496,10 +509,12 @@ function bombSetup() {
     <div class="dock"><button class="btn big" style="--c:var(--red);--t:#fff" data-a="go">Let's go ▶</button></div>
   </div>`, {
     back: home,
-    pack(el) { toggleIn(S.bomb.packs, el.dataset.k); saveCfg(); el.classList.toggle('on'); },
+    pack(el) { toggleIn(S.bomb.packs, el.dataset.k); saveCfg(); el.classList.toggle('on'); $('#pickCount').textContent = S.bomb.packs.length; },
+    bombAll() { S.bomb.packs = BOMB_PACKS.map(x => x.id); saveCfg(); bombSetup(true); },
+    bombNone() { S.bomb.packs = []; saveCfg(); bombSetup(true); },
     fuse(el) { S.bomb.fuse = el.dataset.k; saveCfg(); document.querySelectorAll('.segb').forEach(b => b.classList.toggle('on', b === el)); },
     go() { if (!S.bomb.packs.length) { sfx.err(); return toast('Pick at least one pack'); } bombNew(); },
-  });
+  }, { keepScroll: !!keep });
 }
 function bombNew() {
   B = { starter: pick(S.players), cat: drawCat(), live: false };
@@ -626,7 +641,8 @@ function draftSetup() {
       <li>Everyone starts with <b>$${BUDGET}</b>. Items come up one at a time.</li>
       <li>Going around from a random player, <b>bid higher</b> or <b>pass</b>. Passing means you're out for that item.</li>
       <li>Can't top the bid? You're skipped. Last bidder standing wins it!</li>
-      <li>You must keep $1 for every empty slot, so spend wisely. Compare teams at the end!</li></ol></section>
+      <li>Spend it all if you want! Out of money? You sit out the bidding and get leftover items for <b>free</b> once the others are done.</li>
+      <li>Compare teams at the end!</li></ol></section>
     <div class="dock"><button class="btn big" style="--c:var(--green)" data-a="go">Start the draft ▶</button></div>
   </div>`, {
     back: home,
@@ -645,9 +661,10 @@ function draftStart() {
   draftNextLot();
 }
 const needs = p => D.picks - D.team[p.id].length;
-const maxBid = p => D.money[p.id] - (needs(p) - 1);
+const maxBid = p => D.money[p.id];
 const minBid = () => (D.lot.holder ? D.lot.bid + 1 : 1);
 const canAct = p => needs(p) > 0 && maxBid(p) >= minBid();
+const broke = p => needs(p) > 0 && D.money[p.id] <= 0;
 function draftNextLot() {
   if (S.players.every(p => needs(p) <= 0)) return draftResults();
   if (!D.pool.length) {
@@ -657,8 +674,21 @@ function draftNextLot() {
   }
   const item = D.pool.pop();
   D.n++;
-  const starter = pick(S.players.filter(p => needs(p) > 0));
-  D.lot = { item, bid: 0, holder: null, out: new Set(S.players.filter(p => needs(p) <= 0).map(p => p.id)), turn: starter.id, amt: 1, done: false, fresh: true };
+  const bidders = S.players.filter(p => needs(p) > 0 && D.money[p.id] > 0);
+  if (!bidders.length) {
+    // Everyone still missing picks is out of money: hand out the leftovers for free,
+    // to whoever has the fewest items.
+    const fewest = Math.min(...S.players.filter(broke).map(p => D.team[p.id].length));
+    const taker = pick(S.players.filter(p => broke(p) && D.team[p.id].length === fewest));
+    D.team[taker.id].push(Object.assign({ price: 0 }, item));
+    D.lot = { item, bid: 0, holder: taker.id, out: new Set(S.players.map(p => p.id)), turn: taker.id, amt: 0, done: true, free: true, fresh: true };
+    D.freebies = (D.freebies || 0) + 1;
+    draftScreen();
+    sfx.coin();
+    return;
+  }
+  const starter = pick(bidders);
+  D.lot = { item, bid: 0, holder: null, out: new Set(S.players.filter(p => needs(p) <= 0 || broke(p)).map(p => p.id)), turn: starter.id, amt: 1, done: false, fresh: true };
   sfx.pop();
   draftScreen();
 }
@@ -670,7 +700,8 @@ function draftScreen() {
   const allFull = S.players.every(p => needs(p) <= 0);
   const wallets = S.players.map(p => {
     const full = needs(p) <= 0;
-    const cls = [!L.done && p.id === L.turn ? 'turn' : '', L.out.has(p.id) && !full ? 'out' : '', full ? 'full' : '', p.id === L.holder ? 'lead' : ''].join(' ');
+    const isBroke = !full && D.money[p.id] <= 0;
+    const cls = [!L.done && p.id === L.turn ? 'turn' : '', L.out.has(p.id) && !full && !isBroke ? 'out' : '', full ? 'full' : '', isBroke && p.id !== L.holder ? 'broke' : '', p.id === L.holder ? 'lead' : ''].join(' ');
     return `<div class="wallet ${cls}">${img(p.char)}<span class="w-name">${esc(nm(p))}</span><span class="w-money">$${D.money[p.id]}</span><span class="slots">${slotsHTML(p)}</span></div>`;
   }).join('');
   const bidline = holder
@@ -692,8 +723,9 @@ function draftScreen() {
     </div>`;
   } else {
     lower = `<div class="sold-banner box ${holder ? '' : 'nope'}">
-      <div class="stamp">${holder ? 'SOLD!' : 'NO TAKERS'}</div>
-      ${holder ? `<div class="sold-to">${img(holder.char, 'hop')}<span>to <b>${esc(nm(holder))}</b> for <b class="bid">$${L.bid}</b></span></div>` : '<p class="tiny">Nobody wanted it. It might come back later!</p>'}
+      <div class="stamp ${L.free ? 'free' : ''}">${L.free ? 'FREEBIE!' : holder ? 'SOLD!' : 'NO TAKERS'}</div>
+      ${L.free ? `<div class="sold-to">${img(holder.char, 'hop')}<span><b>${esc(nm(holder))}</b> is out of money, so it's theirs for <b class="bid">$0</b>!</span></div>`
+        : holder ? `<div class="sold-to">${img(holder.char, 'hop')}<span>to <b>${esc(nm(holder))}</b> for <b class="bid">$${L.bid}</b></span></div>` : '<p class="tiny">Nobody wanted it. It might come back later!</p>'}
     </div>
     <div class="dock"><button class="btn big" style="--c:var(--green)" data-a="nextLot">${allFull ? 'See the teams ▶' : 'Next item ▶'}</button></div>`;
   }

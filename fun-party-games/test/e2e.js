@@ -56,6 +56,17 @@ const NAMES = ['Maya', 'Leo', 'Priya', 'Sam', 'Jordan'];
   // ---- Imposter ----
   step('imposter setup');
   await tap('[data-a="imp"]');
+  assert.strictEqual(await page.locator('.chip').count(), 16, '16 word sets');
+  assert.strictEqual(await page.locator('.chip.on').count(), 16, 'all sets on by default');
+  await tap('[data-a="impNone"]');
+  assert.strictEqual(await page.locator('.chip.on').count(), 0, 'None turns every set off');
+  await page.locator('.chip[data-k="ocean"]').click();
+  await page.locator('.chip[data-k="sweets"]').click();
+  await page.locator('.chip[data-k="loot"]').click();
+  assert.strictEqual(await page.locator('#pickCount').innerText(), '3', 'several sets can be picked at once');
+  await shot('05b-imposter-pick-several');
+  await tap('[data-a="impAll"]');
+  assert.strictEqual(await page.locator('.chip.on').count(), 16, 'All turns every set on');
   await tap('.tog');           // hint off
   await tap('.tog');           // hint back on
   await shot('05-imposter-setup');
@@ -95,12 +106,18 @@ const NAMES = ['Maya', 'Leo', 'Priya', 'Sam', 'Jordan'];
   // ---- Who Has the Bomb? ----
   step('bomb');
   await tap('[data-a="bomb"]');
+  assert.strictEqual(await page.locator('.chip').count(), 16, '16 bomb packs');
+  await tap('[data-a="bombNone"]');
+  for (const k of ['animals', 'fantasy', 'tricky']) await page.locator(`.chip[data-k="${k}"]`).click();
   await shot('12-bomb-setup');
+  assert.deepStrictEqual(await page.evaluate(() => S.bomb.packs), ['animals', 'fantasy', 'tricky']);
   await tap('[data-a="go"]');
   const cat1 = await page.locator('#cat b').innerText();
   await tap('[data-a="newcat"]');
   const cat2 = await page.locator('#cat b').innerText();
   assert.notStrictEqual(cat1, cat2, 'new category changes it');
+  const packsSeen = await page.evaluate(() => { const seen = new Set(); for (let i = 0; i < 60; i++) seen.add(drawCat().pack); return [...seen].sort(); });
+  assert.deepStrictEqual(packsSeen, ['Animal Kingdom', 'Fantasy & Magic', 'Tricky Words'], 'categories come from every picked pack: ' + packsSeen);
   await shot('13-bomb-ready');
   // Speed the fuse up for the test: 1.2s quiet, 1.4s blinking, 1.2s fast.
   await page.evaluate(() => { FUSES.normal = [[1.2, 1.2], [1.4, 1.4], [1.2, 1.2]]; });
@@ -142,6 +159,7 @@ const NAMES = ['Maya', 'Leo', 'Priya', 'Sam', 'Jordan'];
   const st = await page.evaluate(() => ({ bid: D.lot.bid, holder: D.lot.holder, turn: D.lot.turn }));
   assert.strictEqual(st.bid, 3, 'bid of $3 placed');
   await tap('[data-a="max"]');
+  assert.strictEqual(await page.locator('#amt').innerText(), '20', 'you can bid all $20 (no money saved for empty slots)');
   await shot('22-draft-raise');
   await tap('[data-a="bid"]');
   let guard = 0;
@@ -149,12 +167,16 @@ const NAMES = ['Maya', 'Leo', 'Priya', 'Sam', 'Jordan'];
   await shot('23-draft-sold');
   // Play the rest with a simple strategy: random bid or pass.
   guard = 0;
+  let freebieShot = false;
   while (!(await page.locator('.teams').count()) && guard++ < 400) {
+    if (!freebieShot && await page.locator('.stamp.free').count()) { freebieShot = true; await shot('23b-draft-freebie'); }
     if (await page.locator('[data-a="nextLot"]').count()) { await tap('[data-a="nextLot"]'); continue; }
     if (Math.random() < 0.45) { await tap('[data-a="plus"]'); await tap('[data-a="bid"]'); }
     else await tap('[data-a="pass"]');
   }
   assert.ok(await page.locator('.teams').count(), 'draft finished');
+  assert.ok(await page.evaluate(() => D.freebies >= 2), 'the player who spent $20 got leftovers for free');
+  assert.ok(freebieShot, 'a FREEBIE! screen was shown');
   const result = await page.evaluate(() => S.players.map(p => ({ n: D.team[p.id].length, money: D.money[p.id], spent: D.team[p.id].reduce((a, i) => a + i.price, 0) })));
   for (const r of result) {
     assert.strictEqual(r.n, 3, 'every team has 3 picks');
@@ -185,7 +207,8 @@ const NAMES = ['Maya', 'Leo', 'Priya', 'Sam', 'Jordan'];
         if (D.lot.done) { draftNextLot(); continue; }
         const p = byId(D.lot.turn);
         if (!canAct(p)) { fails.push('turn given to a player who cannot act'); break; }
-        if (Math.random() < 0.5) { D.lot.amt = minBid() + rnd(Math.max(1, maxBid(p) - minBid() + 1)); draftAct('bid'); }
+        if (maxBid(p) !== D.money[p.id]) { fails.push('max bid is not all your money'); break; }
+        if (Math.random() < 0.5) { D.lot.amt = Math.random() < 0.15 ? maxBid(p) : minBid() + rnd(Math.max(1, maxBid(p) - minBid() + 1)); draftAct('bid'); }
         else draftAct('pass');
       }
       for (const p of S.players) {

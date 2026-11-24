@@ -1498,7 +1498,8 @@ function spriteRows(key) {
 }
 const _sprCache = {};
 function sprURL(key, fill) {
-  const ck = key + (fill || '');
+  if (typeof key === 'string' && typeof ICON_ALIAS !== 'undefined' && ICON_ALIAS[key] && !fill) return sprURL(ICON_ALIAS[key][0], ICON_ALIAS[key][1]);
+  const ck = key + (fill ? JSON.stringify(fill) : '');
   if (_sprCache[ck]) return _sprCache[ck];
   const rows = typeof key === 'string' ? spriteRows(key) : key;
   if (!rows) return '';

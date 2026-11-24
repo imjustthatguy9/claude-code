@@ -368,6 +368,9 @@ body.flash::after { content: ''; position: fixed; inset: 0; background: #fff; z-
 .wallet.out { opacity: .45; }
 .wallet.out::after { content: 'PASS'; position: absolute; top: 18px; left: 50%; transform: translateX(-50%) rotate(-12deg); font: 9px var(--head); background: var(--ink); color: #fff; padding: 3px 4px 2px; }
 .wallet.full { opacity: .5; }
+.wallet.broke { opacity: .55; }
+.wallet.broke::after { content: 'BROKE'; position: absolute; top: 18px; left: 50%; transform: translateX(-50%) rotate(-12deg); font: 9px var(--head); background: var(--red); color: #fff; padding: 3px 4px 2px; box-shadow: 0 0 0 2px var(--ink); }
+.wallet.broke .w-money { color: var(--red); }
 .wallet.full::after { content: 'FULL'; position: absolute; top: 18px; left: 50%; transform: translateX(-50%) rotate(-12deg); font: 9px var(--head); background: var(--green); color: #fff; padding: 3px 4px 2px; box-shadow: 0 0 0 2px var(--ink); }
 .wallet.lead { background: #dff7e9; box-shadow: inset 0 0 0 4px var(--green); }
 .lot { position: relative; display: flex; flex-direction: column; align-items: center; padding: 10px 12px 10px; background: var(--cream); }
@@ -391,6 +394,7 @@ body.flash::after { content: ''; position: fixed; inset: 0; background: #fff; z-
 .sold-banner { display: flex; flex-direction: column; align-items: center; padding: 14px; background: #dff7e9; text-align: center; }
 .sold-banner.nope { background: #f1edf7; }
 .stamp { font: 26px var(--head); color: var(--red); border: 4px solid var(--red); padding: 10px 14px 6px; transform: rotate(-6deg); animation: stamp .35s steps(4) both; background: #fff; }
+.stamp.free { color: var(--purple); border-color: var(--purple); font-size: 20px; }
 .nope .stamp { color: var(--ink-soft); border-color: var(--ink-soft); font-size: 18px; }
 @keyframes stamp { 0% { transform: scale(2.4) rotate(-6deg); opacity: 0; } 100% { transform: scale(1) rotate(-6deg); opacity: 1; } }
 .sold-to { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 19px; }
@@ -434,3 +438,9 @@ img.inline { display: inline-block; width: 22px; height: 22px; vertical-align: -
 
 .draft .bar { margin-bottom: 10px; }
 .draft .wallets { padding-bottom: 6px; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.panel-head h2 { margin: 0; }
+.allnone { display: flex; gap: 6px; }
+.allnone button { font: 9px var(--head); text-transform: uppercase; padding: 8px 8px 6px; background: #f1edf7; box-shadow: inset 0 0 0 3px var(--ink); }
+.allnone button:active { background: var(--yellow); }
+.pick-note { margin: 0 0 10px; }
