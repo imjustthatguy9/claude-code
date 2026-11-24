@@ -419,6 +419,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="result-tier">${t ? esc(t.name).toUpperCase() : 'TIME’S UP'}</div>
         <div class="result-gain">${t ? `<span class="pts">+${t.points} PTS</span><span>↓ ${t.depth}M</span>` : '<span>+0 PTS</span><span>STAY PUT</span>'}</div>
         <div class="result-guess">${t ? `${esc(BLURB[r.tier])}<br><q>${esc(r.matched)}</q>` : 'The clock ran out before you found an answer.'}</div>
+        ${r.desc ? `<div class="result-desc">${esc(r.desc)}</div>` : ''}
         ${tries}
         ${r.corrected ? `<div class="autocorrect" title="Close enough!">✎ auto-corrected from “${esc(r.guess)}”</div>` : ''}
       </div>
@@ -498,7 +499,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const t = tierBy[g.tier];
       const row = h(`<li class="guess-row" style="--tc:${tierColor(g.tier)};animation-delay:${200 + i * 80}ms">
         <div></div>
-        <div><div class="q">P${i + 1} · ${esc(g.prompt)}</div><div class="a">${g.timedOut ? '<span class="muted">Time ran out</span>' : esc(g.guess)}${g.corrected && g.matched ? ` <small>→ ${esc(g.matched)}</small>` : ''}</div>${g.misses && g.misses.length ? `<div class="q">${g.misses.length} miss${g.misses.length === 1 ? '' : 'es'} first</div>` : ''}</div>
+        <div><div class="q">P${i + 1} · ${esc(g.prompt)}</div><div class="a">${g.timedOut ? '<span class="muted">Time ran out</span>' : esc(g.guess)}${g.corrected && g.matched ? ` <small>→ ${esc(g.matched)}</small>` : ''}</div>${g.desc ? `<div class="desc">${esc(g.desc)}</div>` : ''}${g.misses && g.misses.length ? `<div class="q">${g.misses.length} miss${g.misses.length === 1 ? '' : 'es'} first</div>` : ''}</div>
         <div class="p">+${g.points}<small>${t ? esc(t.name).toUpperCase() : 'TIME’S UP'}</small></div>
       </li>`);
       row.firstElementChild.replaceWith(Sprites.img(t ? g.tier : 'hourglass', 3));
@@ -601,12 +602,15 @@ document.addEventListener('DOMContentLoaded', function () {
         row.firstElementChild.replaceWith(Sprites.img(t.key, 3));
         const chips = row.querySelector('.chips');
         const LIMIT = 12;
-        const mk = a => h(`<span class="chip ${g && g.matched === a && g.tier === t.key ? 'you' : ''}">${esc(a)}</span>`);
+        const mk = (a, k) => {
+          const d = tt.descs && tt.descs[k];
+          return h(`<span class="chip ${d ? 'has-desc' : ''} ${g && g.matched === a && g.tier === t.key ? 'you' : ''}">${esc(a)}${d ? `<small>${esc(d)}</small>` : ''}</span>`);
+        };
         if (!tt.answers.length) chips.append(h('<span class="empty">—</span>'));
-        tt.answers.slice(0, LIMIT).forEach(a => chips.append(mk(a)));
+        tt.answers.slice(0, LIMIT).forEach((a, k) => chips.append(mk(a, k)));
         if (tt.answers.length > LIMIT) {
           const more = h(`<button class="chip more">+${tt.answers.length - LIMIT} more</button>`);
-          more.addEventListener('click', () => { more.replaceWith(...tt.answers.slice(LIMIT).map(mk)); });
+          more.addEventListener('click', () => { more.replaceWith(...tt.answers.slice(LIMIT).map((a, k) => mk(a, LIMIT + k))); });
           chips.append(more);
         }
         wrap.append(row);

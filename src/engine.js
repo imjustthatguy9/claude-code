@@ -22,10 +22,22 @@
 
   // --------------------------------------------------------------- matching
   // Admin answer lines: "New York City | NYC | Big Apple" — first is shown.
+  // An optional description goes in *( … )*:  "cat | kitty *(feline friend)*".
+  // Players see it for Nichion and Too Clever answers.
+  const DESC_RE = /\*\(\s*([\s\S]*?)\s*\)\*/;
+  const DESC_TIERS = ['nichion', 'clever'];
+
   function parseAnswer(line) {
-    const spellings = String(line).split('|').map(s => s.trim()).filter(Boolean);
-    return spellings.length ? { display: spellings[0], spellings } : null;
+    let str = String(line);
+    let desc = null;
+    const m = str.match(DESC_RE);
+    if (m) { desc = m[1].replace(/\s+/g, ' ').trim() || null; str = str.replace(DESC_RE, ' '); }
+    const spellings = str.split('|').map(s => s.trim()).filter(Boolean);
+    return spellings.length ? { display: spellings[0], spellings, desc } : null;
   }
+
+  /** Rebuild an answer line from its parts. */
+  const formatAnswer = (spellings, desc) => spellings.join(' | ') + (desc ? ` *(${desc})*` : '');
 
   function normalize(s) {
     return String(s)
@@ -93,7 +105,7 @@
             for (const gk of gKeys) {
               const d = editDistance(gk, ak, cap);
               if (d <= cap && (!best || d < best.distance)) {
-                best = { tier: tier.key, display: ans.display, corrected: d > 0, distance: d };
+                best = { tier: tier.key, display: ans.display, desc: DESC_TIERS.includes(tier.key) ? ans.desc : null, corrected: d > 0, distance: d };
               }
             }
           }
@@ -154,7 +166,7 @@
         if (!keepSpellings.length) continue;
         const display = keepSpellings[0];
         for (const e of lineKept) kept.push({ keys: e.keys, tier, display });
-        out[tier].push(keepSpellings.join(' | '));
+        out[tier].push(formatAnswer(keepSpellings, ans.desc));
       }
     }
     return { answers: out, removed };
@@ -228,7 +240,7 @@
       for (const t of TIERS) {
         const raw = p && p.answers && p.answers[t.key];
         const list = Array.isArray(raw) ? raw : String(raw || '').split('\n');
-        answers[t.key] = list.map(s => String(s).trim().slice(0, 200)).filter(Boolean).slice(0, 300);
+        answers[t.key] = list.map(s => String(s).trim().slice(0, 400)).filter(Boolean).slice(0, 300);
         count += answers[t.key].length;
       }
       if (text || count) out.push({ text, answers: dedupeAnswers(answers).answers });
@@ -284,6 +296,11 @@
         warnings.push(`${groups.length - TEXT_ORDER.length} extra group${groups.length - TEXT_ORDER.length === 1 ? '' : 's'} after Plankton ignored`);
       }
       if (!groups.length) warnings.push('No answers found — put a blank line after the question, then the answers');
+      for (const [k, list] of Object.entries(answers)) {
+        if (DESC_TIERS.includes(k)) continue;
+        const n = list.filter(a => DESC_RE.test(a)).length;
+        if (n) warnings.push(`${TIER_BY_KEY[k].name} has ${n} description${n === 1 ? '' : 's'} — only Nichion and Too Clever show descriptions`);
+      }
       const dd = dedupeAnswers(answers);
       const notes = dd.removed.map(describeRemoval);
       out.push({ text, answers: dd.answers, warnings, notes });
@@ -469,7 +486,7 @@
       }
       const tier = TIER_BY_KEY[m.tier];
       return this._record(play, prompts, index, {
-        guess: text, tier: tier.key, matched: m.display, corrected: m.corrected,
+        guess: text, tier: tier.key, matched: m.display, desc: m.desc || null, corrected: m.corrected,
         points: tier.points, depth: tier.depth,
       });
     }
@@ -512,7 +529,14 @@
         date: y,
         prompts: this.prompts(y).map((p, i) => ({
           index: i, text: p.text,
-          tiers: TIERS.map(t => ({ key: t.key, answers: (p.answers[t.key] || []).map(parseAnswer).filter(Boolean).map(a => a.display) })),
+          tiers: TIERS.map(t => {
+            const list = (p.answers[t.key] || []).map(parseAnswer).filter(Boolean);
+            return {
+              key: t.key,
+              answers: list.map(a => a.display),
+              descs: list.map(a => (DESC_TIERS.includes(t.key) ? a.desc : null)),
+            };
+          }),
         })),
         guesses: this.play(y).guesses,
       };
@@ -520,7 +544,7 @@
   }
 
   const api = {
-    TIERS, TIER_BY_KEY, MAX_PROMPTS, TIME_LIMIT_MS, normalize, keys, editDistance, allowedTypos, matchGuess, parseAnswer,
+    TIERS, TIER_BY_KEY, MAX_PROMPTS, TIME_LIMIT_MS, DESC_TIERS, DESC_RE, formatAnswer, normalize, keys, editDistance, allowedTypos, matchGuess, parseAnswer,
     findDuplicates, dedupeAnswers, describeRemoval, nearDuplicate, singularize, localDate, addDays, isDate, encodeDay, decodeDay, cleanPrompts, sha256,
     makeStorage, Game, GuessError, parseQuestionText, promptToText, TEXT_ORDER,
   };

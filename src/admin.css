@@ -192,3 +192,6 @@ body.admin-open #app { visibility: hidden; }
 /* Typed formats need unambiguous [] - | characters, which the pixel font squashes. */
 .paste-area, .fmt-example, .fmt code, .help code { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; font-size: 15px; }
 .fmt code, .help code { font-size: 13px; }
+
+.pv-tier em small { display: block; font-size: 12px; color: var(--muted); font-style: italic; }
+.tester-desc { font-style: italic; color: var(--text-2); }
