@@ -104,22 +104,72 @@
     return best;
   }
 
-  function findDuplicates(answers) {
-    const seen = new Map(), dups = [];
-    for (const tier of TIERS) {
-      for (const line of (answers && answers[tier.key]) || []) {
-        const ans = parseAnswer(line);
-        if (!ans) continue;
-        for (const s of ans.spellings) {
-          // Same key the matcher uses, so "cat" and "Cats" count as one answer.
-          const k = normalize(s).split(' ').map(singularize).join('');
-          if (!k) continue;
-          if (seen.has(k) && seen.get(k) !== tier.key) dups.push({ spelling: s, tiers: [seen.get(k), tier.key] });
-          else if (!seen.has(k)) seen.set(k, tier.key);
-        }
+  // ------------------------------------------------------------- dedupe
+  // Two spellings are the "same answer" when they normalise to the same key
+  // (case, punctuation, accents, the/a/an, plurals), or are a near-miss typo
+  // of a longish word. Stricter than in-game auto-correct on purpose, so
+  // different answers like "Iran"/"Iraq" are never merged.
+  function nearDuplicate(aKeys, bKeys) {
+    for (const a of aKeys) {
+      for (const b of bKeys) {
+        if (a === b) return true;
+        const len = Math.min(a.length, b.length);
+        if (len < 6) continue;
+        const d = editDistance(a, b, 2);
+        if (d <= 1 || (len >= 10 && d <= 2)) return true;
       }
     }
-    return dups;
+    return false;
+  }
+
+  /**
+   * Remove duplicate / near-duplicate answers, keeping the one in the deepest
+   * tier (and the first one within a tier). Works per spelling, so a matching
+   * alias is dropped without losing the rest of its line.
+   * @returns {{ answers: Record<string,string[]>, removed: {spelling, tier, keptTier, keptAs, exact}[] }}
+   */
+  function dedupeAnswers(answers) {
+    const kept = [];          // { keys, tier, display }
+    const removed = [];
+    const out = Object.fromEntries(TIERS.map(t => [t.key, []]));
+    for (let t = TIERS.length - 1; t >= 0; t--) {
+      const tier = TIERS[t].key;
+      for (const line of (answers && answers[tier]) || []) {
+        const ans = parseAnswer(line);
+        if (!ans) continue;
+        const keepSpellings = [];
+        const lineKept = [];
+        for (const sp of ans.spellings) {
+          const k = keys(sp);
+          if (!k.length) continue;
+          const hit = kept.find(e => nearDuplicate(e.keys, k)) || lineKept.find(e => nearDuplicate(e.keys, k) && e.self);
+          if (hit && !hit.self) {
+            removed.push({ spelling: sp, tier, keptTier: hit.tier, keptAs: hit.display, exact: hit.keys.some(x => k.includes(x)) });
+            continue;
+          }
+          if (hit && hit.self) continue;             // same spelling twice on one line: drop silently
+          keepSpellings.push(sp);
+          lineKept.push({ keys: k, self: true });
+        }
+        if (!keepSpellings.length) continue;
+        const display = keepSpellings[0];
+        for (const e of lineKept) kept.push({ keys: e.keys, tier, display });
+        out[tier].push(keepSpellings.join(' | '));
+      }
+    }
+    return { answers: out, removed };
+  }
+
+  /** Back-compat: list of what dedupeAnswers would remove. */
+  function findDuplicates(answers) {
+    return dedupeAnswers(answers).removed.map(r => ({ spelling: r.spelling, tiers: [r.keptTier, r.tier], keptAs: r.keptAs }));
+  }
+
+  function describeRemoval(r) {
+    const same = r.tier === r.keptTier;
+    return same
+      ? `“${r.spelling}” was listed twice in ${TIER_BY_KEY[r.tier].name}`
+      : `“${r.spelling}” removed from ${TIER_BY_KEY[r.tier].name} — kept as “${r.keptAs}” in ${TIER_BY_KEY[r.keptTier].name}`;
   }
 
   // ------------------------------------------------------------------- days
@@ -181,7 +231,7 @@
         answers[t.key] = list.map(s => String(s).trim().slice(0, 200)).filter(Boolean).slice(0, 300);
         count += answers[t.key].length;
       }
-      if (text || count) out.push({ text, answers });
+      if (text || count) out.push({ text, answers: dedupeAnswers(answers).answers });
     }
     return out;
   }
@@ -233,8 +283,9 @@
         warnings.push(`${groups.length - TEXT_ORDER.length} extra group${groups.length - TEXT_ORDER.length === 1 ? '' : 's'} after Plankton ignored`);
       }
       if (!groups.length) warnings.push('No answers found — put a blank line after the question, then the answers');
-      for (const d of findDuplicates(answers)) warnings.push(`“${d.spelling}” is in both ${TIER_BY_KEY[d.tiers[0]].name} and ${TIER_BY_KEY[d.tiers[1]].name}`);
-      out.push({ text, answers, warnings });
+      const dd = dedupeAnswers(answers);
+      const notes = dd.removed.map(describeRemoval);
+      out.push({ text, answers: dd.answers, warnings, notes });
     }
     return out;
   }
@@ -469,7 +520,7 @@
 
   const api = {
     TIERS, TIER_BY_KEY, MAX_PROMPTS, TIME_LIMIT_MS, normalize, keys, editDistance, allowedTypos, matchGuess, parseAnswer,
-    findDuplicates, singularize, localDate, addDays, isDate, encodeDay, decodeDay, cleanPrompts, sha256,
+    findDuplicates, dedupeAnswers, describeRemoval, nearDuplicate, singularize, localDate, addDays, isDate, encodeDay, decodeDay, cleanPrompts, sha256,
     makeStorage, Game, GuessError, parseQuestionText, promptToText, TEXT_ORDER,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

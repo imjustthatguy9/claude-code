@@ -175,3 +175,17 @@ body.admin-open #app { visibility: hidden; }
 .pv-tier em { font-style: normal; color: var(--text); background: var(--ink-2); padding: 0 6px; margin: 0 4px 3px 0; display: inline-block; }
 .pv-warn { margin: 8px 0 0 !important; font-size: 14px; color: #ffb3c0 !important; }
 .paste-actions { display: flex; flex-wrap: wrap; gap: 20px; justify-content: flex-end; margin-top: 18px; }
+
+/* duplicates */
+.dup-bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; margin-top: 14px; padding: 8px 10px 8px 12px;
+  background: rgba(255, 92, 122, 0.12); box-shadow: inset 4px 0 0 var(--danger); font-size: 15px; color: #ffd0d8; animation: dot-in 200ms both; }
+.dup-bar[hidden] { display: none; }
+.dup-bar b { color: #fff; }
+.dup-bar .btn.small { min-height: 34px; font-size: 8px; padding: 0 12px; }
+.tbox .warn { color: #ffb3c0; }
+.cleanup-note { padding: 14px 16px; margin-bottom: 28px; animation: screen-in 380ms both; }
+.cleanup-head { display: flex; justify-content: space-between; align-items: center; }
+.cleanup-head b { font-family: var(--f-pixel); font-size: 9px; font-weight: 400; color: var(--accent); letter-spacing: 1px; }
+.cleanup-note ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: 15px; color: var(--text-2); }
+.cleanup-note li span { font-family: var(--f-pixel); font-size: 7px; color: var(--muted); margin-right: 8px; }
+.pv-note { margin: 6px 0 0 !important; font-size: 14px; color: var(--text-2) !important; }

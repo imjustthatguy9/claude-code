@@ -300,9 +300,18 @@
       </div>
     </div>`);
     head.querySelector('[data-save]').addEventListener('click', save);
+    if (lastCleanup && lastCleanup.date !== selected) lastCleanup = null;
     head.querySelector('[data-revert]').addEventListener('click', () => { draft = JSON.parse(saved); renderEditor(); });
     ed.append(head);
 
+    if (lastCleanup) {
+      const note = h(`<div class="cleanup-note px-box dim" role="status">
+        <div class="cleanup-head"><b>✂ CLEANED UP ${lastCleanup.items.length} DUPLICATE${lastCleanup.items.length === 1 ? '' : 'S'}</b><button class="icon-btn" aria-label="Dismiss">✕</button></div>
+        <ul>${collapse(lastCleanup.items.map(it => `P${it.prompt + 1}\u0000${it.text}`)).map(x => { const [pp, rest] = x.split('\u0000'); return `<li><span>${pp}</span>${esc(rest)}</li>`; }).join('')}</ul>
+      </div>`);
+      note.querySelector('button').addEventListener('click', () => { lastCleanup = null; note.remove(); });
+      ed.append(note);
+    }
     if (isToday || isPast) {
       ed.append(h(`<div class="help px-box dim">${isToday
         ? '<b>This is today.</b> Players who already played keep their scores; changes only reach players once they open the new game file.'
@@ -331,6 +340,7 @@
         <li>One answer per line. Extra accepted spellings go after a bar: <code>New York City | NYC | Big Apple</code>. Players see the first one.</li>
         <li>Capitals, punctuation, accents, “the/a/an” and simple plurals are ignored. Small typos are auto-corrected (none for 1–3 letters, 1 for 4–5, 2 for 6–9, 3 for 10+).</li>
         <li><b>📝 Paste as text:</b> question on the first line, a blank line, then answer groups deepest first (Nichion, Deep Cut, Rare, Schooler, Too Clever, Plankton), with a blank line between groups. Pasting that straight into a question box works too.</li>
+        <li><b>Duplicates are cleaned up for you.</b> If the same answer (or a near-identical spelling, plural or typo) is in more than one tier, the deepest tier keeps it and the others are removed when you save.</li>
         <li>Anything not listed scores 0. A day with fewer than ${MAXP} prompts still works; the score page notes “(out of N questions today)”.</li>
         <li><b>Save Day</b> keeps your edits in this browser. <b>Download game file</b> makes a new <code>nichion.html</code> with everything inside it; share that file.</li>
       </ul>
@@ -353,6 +363,10 @@
       </div>
       <label class="sr-only" for="pt${i}">Prompt ${i + 1} text</label>
       <input class="field ptext" id="pt${i}" maxlength="200" placeholder="e.g. Name a fruit">
+      <div class="dup-bar" data-dupbar hidden>
+        <span>✂ <b data-dupcount></b> across the tiers — the copy in the deepest tier is kept, the rest are removed when you save.</span>
+        <button class="btn small ghost" data-dupfix>REMOVE NOW</button>
+      </div>
       <div class="tiers"></div>
       <div class="tester">
         <div class="kicker">TEST A GUESS</div>
@@ -374,6 +388,7 @@
     });
     card.querySelector('[data-past]').addEventListener('click', () => libraryModal(i));
     card.querySelector('[data-text]').addEventListener('click', () => pasteTextModal(i));
+    card.querySelector('[data-dupfix]').addEventListener('click', () => removeDupesNow(i));
     card.querySelector('[data-up]').addEventListener('click', () => { [draft[i - 1], draft[i]] = [draft[i], draft[i - 1]]; renderEditor(); });
     card.querySelector('[data-down]').addEventListener('click', () => { [draft[i + 1], draft[i]] = [draft[i], draft[i + 1]]; renderEditor(); });
     card.querySelector('[data-del]').addEventListener('click', () => {
@@ -414,15 +429,47 @@
     return card;
   }
 
+  // Live duplicate check for one prompt card: per-tier notes plus a bar with
+  // a "remove now" button. Saving does the same cleanup automatically.
   function checkDupes(card, p, i) {
     const answers = Object.fromEntries(tiers.map(t => [t.key, lines(p.answers[t.key] || '')]));
+    const { removed } = E.dedupeAnswers(answers);
     const warn = {};
-    for (const d of E.findDuplicates(answers)) (warn[d.tiers[1]] ||= []).push(`“${d.spelling}” is also in ${E.TIER_BY_KEY[d.tiers[0]].name}`);
+    for (const r of removed) {
+      (warn[r.tier] ||= []).push(r.tier === r.keptTier
+        ? `“${r.spelling}” is listed twice`
+        : `“${r.spelling}” ≈ “${r.keptAs}” in ${E.TIER_BY_KEY[r.keptTier].name}`);
+    }
     for (const t of tiers) {
       const el = card.querySelector(`#ta${i}-${t.key}`)?.parentElement.querySelector('[data-warn]');
-      if (el) el.textContent = (warn[t.key] || []).join('; ');
+      if (el) el.textContent = warn[t.key] ? '✂ ' + collapse(warn[t.key]).join('; ') + ' — will be removed' : '';
+    }
+    const bar = card.querySelector('[data-dupbar]');
+    if (bar) {
+      bar.hidden = !removed.length;
+      bar.querySelector('[data-dupcount]').textContent = `${removed.length} duplicate${removed.length === 1 ? '' : 's'}`;
     }
   }
+
+  /** ["a","a","b"] → ["a ×2","b"] */
+  function collapse(list) {
+    const counts = new Map();
+    for (const x of list) counts.set(x, (counts.get(x) || 0) + 1);
+    return [...counts].map(([x, n]) => (n > 1 ? `${x} ×${n}` : x));
+  }
+
+  function removeDupesNow(i) {
+    const p = draft[i];
+    const answers = Object.fromEntries(tiers.map(t => [t.key, lines(p.answers[t.key] || '')]));
+    const { answers: clean, removed } = E.dedupeAnswers(answers);
+    if (!removed.length) return;
+    p.answers = Object.fromEntries(tiers.map(t => [t.key, clean[t.key].join('\n')]));
+    renderEditor();
+    const card = root.querySelectorAll('.pcard')[i];
+    if (card) { card.classList.add('flash'); setTimeout(() => card.classList.remove('flash'), 1200); }
+    toast(`Removed ${removed.length} duplicate${removed.length === 1 ? '' : 's'} — kept the deepest copy`);
+  }
+
 
   // ---------------------------------------------------------- past prompts
   // Every saved prompt from other days, searchable, ready to paste into the
@@ -630,6 +677,7 @@
           tl.append(h(`<div class="pv-tier ${list.length ? '' : 'empty'}" style="--tc:var(--t-${key})"><b>${esc(t.name.toUpperCase())}</b><span>${list.length ? list.map(a => `<em>${esc(E.parseAnswer(a)?.display || a)}</em>`).join('') : '—'}</span></div>`));
         }
         for (const w of q.warnings) card.append(h(`<p class="pv-warn">⚠ ${esc(w)}</p>`));
+        for (const n of q.notes || []) card.append(h(`<p class="pv-note">✂ ${esc(n)}</p>`));
         prev.append(card);
       });
       if (parsed.length > room) prev.append(h(`<p class="pv-warn">⚠ A day holds ${MAXP} prompts — only the first ${Math.max(0, room)} will be used.</p>`));
@@ -655,6 +703,8 @@
     if (tag) tag.hidden = !dirty();
   }
 
+  let lastCleanup = null;   // { date, items: [{ prompt, text }] } shown after a save
+
   function save() {
     const prompts = draft.map(p => ({
       text: p.text.trim(),
@@ -664,15 +714,25 @@
     if (missingText >= 0) { toast(`Prompt ${missingText + 1} needs text`, 'error'); root.querySelector('#pt' + missingText)?.focus(); return; }
     const noAnswers = prompts.findIndex(p => p.text && !tiers.some(t => p.answers[t.key].length));
     if (noAnswers >= 0 && !confirm(`Prompt ${noAnswers + 1} has no answers — every guess would score 0. Save anyway?`)) return;
+    // Duplicates / near-duplicates: keep the deepest copy, drop the rest.
+    const items = [];
+    prompts.forEach((p, k) => {
+      const { answers, removed } = E.dedupeAnswers(p.answers);
+      p.answers = answers;
+      for (const r of removed) items.push({ prompt: k, text: E.describeRemoval(r) });
+    });
     const clean = E.cleanPrompts(prompts);
     if (clean.length) book.days[selected] = clean; else delete book.days[selected];
     book.dirty = true; book.savedAt = Date.now();
     storeBook();
-    const dups = clean.reduce((n, pr) => n + E.findDuplicates(pr.answers).length, 0);
-    toast(dups ? `Saved — ${dups} answer(s) listed in two tiers` : 'Saved ✓ — download the game file when you’re done', dups ? 'error' : '');
+    lastCleanup = items.length ? { date: selected, items } : null;
+    toast(items.length
+      ? `Saved — removed ${items.length} duplicate${items.length === 1 ? '' : 's'} (kept the deepest)`
+      : 'Saved ✓ — download the game file when you’re done');
     selectDay(selected, true);
     renderTop();
   }
+
 
   function onKey(e) {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && draft && root.isConnected) { e.preventDefault(); save(); }

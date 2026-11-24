@@ -58,4 +58,5 @@ test('helpers', () => {
   assert.equal(editDistance('ab', 'ba'), 1);
   assert.equal(normalize('Crème Brûlée'), 'creme brulee');
   assert.equal(findDuplicates({ plankton: ['Apple'], rare: ['apple'] }).length, 1);
+  assert.equal(findDuplicates({ rare: ['Iran'], deepcut: ['Iraq'] }).length, 0, 'different short answers are not merged');
 });
