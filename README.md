@@ -18,9 +18,10 @@ Each day has up to **five prompts**, with **25 seconds** for each. Keep typing u
 1. Open `nichion.html`. Tap **?** and choose **Admin: edit prompts**, or add `#admin` to the end of the address.
 2. The first time, you choose an admin password. It's saved into every game file you download from then on.
 3. Pick a day on the calendar and add 1–5 prompts. Each prompt has a box for each tier, with **one answer per line**. Extra accepted spellings go after a bar: `New York City | NYC | Big Apple`. Players see the first spelling.
-4. Use **Test a guess** under each prompt to check where an answer would land, including any auto-correction.
-5. Press **Save Day**. This keeps your edits in your browser.
-6. Press **Download game file** to get a new `nichion.html` with all your prompts inside it. **Share that file.** Players only see changes once they have the new file.
+4. **Reuse old prompts.** The **Past prompts** list under the calendar shows every prompt from other days. You can search it (by prompt or answer) and filter it by Past / Upcoming / All. Open one to see its answers, then paste it into a prompt slot or add it as a new prompt. Each prompt also has a **📋 Past** button that pastes straight into that slot. Pasted prompts can be edited like any other.
+5. Use **Test a guess** under each prompt to check where an answer would land, including any auto-correction.
+6. Press **Save Day**. This keeps your edits in your browser.
+7. Press **Download game file** to get a new `nichion.html` with all your prompts inside it. **Share that file.** Players only see changes once they have the new file.
 
 The **More** menu has: back up / restore prompts as JSON, change password, reset your own plays (for testing), and discard edits.
 

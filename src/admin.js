@@ -14,6 +14,7 @@
   let root, DATA, PRISTINE, onExit;
   let book = null;          // { salt, admin:{salt,hash}|null, days:{date: prompts}, fileStamp, dirty, savedAt }
   let month = null, selected = null;
+  let libFilter = 'past', libQuery = '';
   let draft = null, saved = '';
   const today = () => E.localDate();
 
@@ -122,7 +123,7 @@
   function renderShell() {
     root.innerHTML = '';
     const top = h('<header class="a-top"></header>');
-    const grid = h(`<div class="a-grid"><aside class="cal px-box"></aside><section id="editor"></section></div>`);
+    const grid = h(`<div class="a-grid"><div class="a-side"><aside class="cal px-box"></aside><aside class="lib px-box" aria-label="Past prompts"></aside></div><section id="editor"></section></div>`);
     root.append(top, grid);
     renderTop();
     month = today().slice(0, 7);
@@ -333,6 +334,7 @@
       </ul>
     </div>`));
     markDirty();
+    renderSideLibrary();
   }
 
   function promptCard(p, i) {
@@ -342,6 +344,7 @@
         <div class="tools">
           <button class="icon-btn" data-up aria-label="Move up" ${i === 0 ? 'disabled' : ''}>▲</button>
           <button class="icon-btn" data-down aria-label="Move down" ${i === draft.length - 1 ? 'disabled' : ''}>▼</button>
+          <button class="icon-btn" data-past aria-label="Paste a past prompt into prompt ${i + 1}">📋 PAST</button>
           <button class="icon-btn del" data-del aria-label="Delete prompt">✕ DELETE</button>
         </div>
       </div>
@@ -357,6 +360,7 @@
     const ptext = card.querySelector('.ptext');
     ptext.value = p.text;
     ptext.addEventListener('input', () => { p.text = ptext.value; markDirty(); });
+    card.querySelector('[data-past]').addEventListener('click', () => libraryModal(i));
     card.querySelector('[data-up]').addEventListener('click', () => { [draft[i - 1], draft[i]] = [draft[i], draft[i - 1]]; renderEditor(); });
     card.querySelector('[data-down]').addEventListener('click', () => { [draft[i + 1], draft[i]] = [draft[i], draft[i + 1]]; renderEditor(); });
     card.querySelector('[data-del]').addEventListener('click', () => {
@@ -405,6 +409,139 @@
       const el = card.querySelector(`#ta${i}-${t.key}`)?.parentElement.querySelector('[data-warn]');
       if (el) el.textContent = (warn[t.key] || []).join('; ');
     }
+  }
+
+  // ---------------------------------------------------------- past prompts
+  // Every saved prompt from other days, searchable, ready to paste into the
+  // day being edited.
+  function libraryItems() {
+    const t = today();
+    const q = E.normalize(libQuery);
+    const out = [];
+    for (const [date, prompts] of Object.entries(book.days)) {
+      if (date === selected) continue;
+      if (libFilter === 'past' && date >= t) continue;
+      if (libFilter === 'upcoming' && date < t) continue;
+      prompts.forEach((p, idx) => {
+        if (q) {
+          const hay = E.normalize([p.text, ...tiers.flatMap(x => p.answers[x.key] || [])].join(' '));
+          if (!hay.includes(q)) return;
+        }
+        out.push({ date, idx, p });
+      });
+    }
+    return out.sort((a, b) => b.date.localeCompare(a.date) || a.idx - b.idx);
+  }
+
+  /** Builds the library UI. `target` = a prompt index to paste into, or null (sidebar). */
+  function buildLibrary(target, onPasted) {
+    const node = h(`<div class="lib-wrap">
+      <div class="lib-head">
+        <h3>PAST PROMPTS</h3>
+        <span class="lib-count" data-count></span>
+      </div>
+      <input class="field lib-search" type="search" placeholder="Search prompts or answers…" aria-label="Search past prompts">
+      <div class="lib-filters" role="radiogroup" aria-label="Which days">
+        ${[['past', 'PAST'], ['upcoming', 'UPCOMING'], ['all', 'ALL']].map(([k, l]) => `<button class="lib-filter" role="radio" data-f="${k}">${l}</button>`).join('')}
+      </div>
+      <div class="lib-list" data-list></div>
+    </div>`);
+    const search = node.querySelector('.lib-search');
+    search.value = libQuery;
+    const list = node.querySelector('[data-list]');
+    const paint = () => {
+      node.querySelectorAll('.lib-filter').forEach(b => { const on = b.dataset.f === libFilter; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
+      const items = libraryItems();
+      node.querySelector('[data-count]').textContent = `${items.length}`;
+      list.innerHTML = '';
+      if (!items.length) {
+        list.append(h(`<p class="lib-empty">${libQuery ? 'Nothing matches that search.' : libFilter === 'past' ? 'No past prompts yet — earlier days you fill in will show up here.' : 'No prompts here yet.'}</p>`));
+        return;
+      }
+      for (const it of items.slice(0, 200)) list.append(libraryItem(it, target, onPasted));
+    };
+    let timer;
+    search.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => { libQuery = search.value; paint(); }, 120); });
+    node.querySelectorAll('.lib-filter').forEach(b => b.addEventListener('click', () => { libFilter = b.dataset.f; paint(); }));
+    paint();
+    return node;
+  }
+
+  function libraryItem({ date, idx, p }, target, onPasted) {
+    const counts = tiers.map(t => (p.answers[t.key] || []).length);
+    const total = counts.reduce((a, b) => a + b, 0);
+    const item = h(`<details class="lib-item">
+      <summary>
+        <span class="lib-date">${esc(fmt(date, { month: 'short', day: 'numeric', year: date.slice(0, 4) === today().slice(0, 4) ? undefined : 'numeric' }).toUpperCase())} · P${idx + 1}</span>
+        <span class="lib-text">${esc(p.text)}</span>
+        <span class="lib-dots" title="${total} answers">${tiers.map((t, k) => `<i style="--tc:var(--t-${t.key})" class="${counts[k] ? '' : 'off'}"></i>`).join('')}</span>
+      </summary>
+      <div class="lib-body">
+        <div class="lib-tiers"></div>
+        <div class="lib-actions"></div>
+      </div>
+    </details>`);
+    const tl = item.querySelector('.lib-tiers');
+    for (const t of [...tiers].reverse()) {
+      const ans = (p.answers[t.key] || []).map(a => E.parseAnswer(a)?.display).filter(Boolean);
+      tl.append(h(`<div class="lib-tier" style="--tc:var(--t-${t.key})"><b>${esc(t.name.toUpperCase())}</b><span>${ans.length ? esc(ans.join(', ')) : '—'}</span></div>`));
+    }
+    const acts = item.querySelector('.lib-actions');
+    const btn = (label, cls, fn) => { const b = h(`<button class="btn small ${cls}">${label}</button>`); b.addEventListener('click', fn); acts.append(b); };
+    if (target != null) {
+      btn(`PASTE INTO PROMPT ${target + 1}`, '', () => paste(p, target, date, onPasted));
+    } else {
+      draft.forEach((_, k) => btn(`INTO P${k + 1}`, 'ghost', () => paste(p, k, date, onPasted)));
+      if (draft.length < MAXP) btn('+ NEW PROMPT', '', () => paste(p, draft.length, date, onPasted));
+    }
+    return item;
+  }
+
+  function paste(p, target, fromDate, onPasted) {
+    const existing = draft[target];
+    const hasContent = existing && (existing.text.trim() || Object.values(existing.answers).some(v => v.trim()));
+    if (hasContent && !confirm(`Replace prompt ${target + 1}${existing.text ? ` (“${existing.text}”)` : ''} with “${p.text}”?`)) return;
+    draft[target] = {
+      text: p.text,
+      answers: Object.fromEntries(tiers.map(t => [t.key, (p.answers[t.key] || []).join('\n')])),
+    };
+    onPasted && onPasted();
+    renderEditor();
+    const card = root.querySelectorAll('.pcard')[target];
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      card.classList.add('flash');
+      setTimeout(() => card.classList.remove('flash'), 1200);
+    }
+    toast(`Pasted from ${fmt(fromDate, { month: 'short', day: 'numeric' })} — press Save Day to keep it`);
+  }
+
+  function renderSideLibrary() {
+    const side = root.querySelector('.lib');
+    if (!side) return;
+    const keepFocus = document.activeElement && side.contains(document.activeElement) && document.activeElement.matches('.lib-search');
+    const pos = keepFocus ? document.activeElement.selectionStart : null;
+    const openKeys = [...side.querySelectorAll('.lib-item[open] .lib-date')].map(e => e.textContent);
+    side.innerHTML = '';
+    side.append(buildLibrary(null));
+    side.querySelectorAll('.lib-item').forEach(d => { if (openKeys.includes(d.querySelector('.lib-date').textContent)) d.open = true; });
+    if (keepFocus) { const s = side.querySelector('.lib-search'); s.focus(); s.setSelectionRange(pos, pos); }
+  }
+
+  function libraryModal(target) {
+    const back = h(`<div class="modal-backdrop"><div class="modal px-box lib-modal" role="dialog" aria-modal="true" aria-label="Paste a past prompt">
+      <button class="icon-btn close" aria-label="Close">✕</button>
+    </div></div>`);
+    const box = back.firstElementChild;
+    const close = () => { back.remove(); document.removeEventListener('keydown', onEsc, true); };
+    const onEsc = e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+    box.append(h(`<p class="lib-intro">Pick a past prompt to copy into <b>prompt ${target + 1}</b>. Its text and every answer get pasted; you can edit them after.</p>`));
+    box.append(buildLibrary(target, close));
+    box.querySelector('.close').addEventListener('click', close);
+    back.addEventListener('click', e => { if (e.target === back) close(); });
+    document.addEventListener('keydown', onEsc, true);
+    document.body.append(back);
+    box.querySelector('.lib-search').focus();
   }
 
   function markDirty() {
