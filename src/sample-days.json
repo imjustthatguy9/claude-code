@@ -1,0 +1,819 @@
+{
+ "2026-11-22": [
+  {
+   "text": "Name a fruit",
+   "answers": {
+    "plankton": [
+     "Apple",
+     "Banana",
+     "Orange"
+    ],
+    "clever": [
+     "Strawberry",
+     "Grape | Grapes",
+     "Watermelon"
+    ],
+    "schooler": [
+     "Mango",
+     "Pineapple",
+     "Peach",
+     "Pear",
+     "Cherry",
+     "Blueberry"
+    ],
+    "rare": [
+     "Kiwi",
+     "Papaya",
+     "Pomegranate",
+     "Plum",
+     "Lemon",
+     "Lime",
+     "Cantaloupe",
+     "Raspberry"
+    ],
+    "deepcut": [
+     "Lychee",
+     "Guava",
+     "Persimmon",
+     "Fig",
+     "Apricot",
+     "Passion fruit",
+     "Dragon fruit | Pitaya",
+     "Coconut",
+     "Nectarine"
+    ],
+    "nichion": [
+     "Durian",
+     "Rambutan",
+     "Mangosteen",
+     "Jackfruit",
+     "Kumquat",
+     "Quince",
+     "Starfruit | Carambola",
+     "Ackee",
+     "Cherimoya"
+    ]
+   }
+  },
+  {
+   "text": "Name a planet or dwarf planet",
+   "answers": {
+    "plankton": [
+     "Mars",
+     "Earth"
+    ],
+    "clever": [
+     "Jupiter",
+     "Saturn"
+    ],
+    "schooler": [
+     "Venus",
+     "Mercury"
+    ],
+    "rare": [
+     "Neptune",
+     "Uranus",
+     "Pluto"
+    ],
+    "deepcut": [
+     "Ceres",
+     "Eris"
+    ],
+    "nichion": [
+     "Haumea",
+     "Makemake",
+     "Sedna",
+     "Gonggong",
+     "Quaoar"
+    ]
+   }
+  },
+  {
+   "text": "Name a dog breed",
+   "answers": {
+    "plankton": [
+     "Golden Retriever",
+     "Labrador | Lab | Labrador Retriever"
+    ],
+    "clever": [
+     "German Shepherd",
+     "Poodle",
+     "Bulldog"
+    ],
+    "schooler": [
+     "Beagle",
+     "Husky | Siberian Husky",
+     "Chihuahua",
+     "Pug",
+     "Dachshund | Wiener dog",
+     "Rottweiler"
+    ],
+    "rare": [
+     "Corgi",
+     "Boxer",
+     "Great Dane",
+     "Doberman",
+     "Shih Tzu",
+     "Pomeranian",
+     "Border Collie"
+    ],
+    "deepcut": [
+     "Basenji",
+     "Weimaraner",
+     "Vizsla",
+     "Shiba Inu",
+     "Akita",
+     "Samoyed",
+     "Bernese Mountain Dog"
+    ],
+    "nichion": [
+     "Xoloitzcuintli | Xolo",
+     "Komondor",
+     "Puli",
+     "Lagotto Romagnolo",
+     "Otterhound",
+     "Azawakh",
+     "Catahoula"
+    ]
+   }
+  },
+  {
+   "text": "Name a breakfast food",
+   "answers": {
+    "plankton": [
+     "Eggs",
+     "Pancakes",
+     "Cereal"
+    ],
+    "clever": [
+     "Bacon",
+     "Waffles",
+     "Toast"
+    ],
+    "schooler": [
+     "Oatmeal",
+     "French Toast",
+     "Bagel",
+     "Yogurt",
+     "Sausage"
+    ],
+    "rare": [
+     "Hash browns",
+     "Omelette | Omelet",
+     "Muffin",
+     "Croissant",
+     "Grits"
+    ],
+    "deepcut": [
+     "Eggs Benedict",
+     "Shakshuka",
+     "Biscuits and gravy",
+     "Granola",
+     "Crepes"
+    ],
+    "nichion": [
+     "Congee",
+     "Kedgeree",
+     "Scrapple",
+     "Chilaquiles",
+     "Huevos rancheros",
+     "Natto",
+     "Black pudding"
+    ]
+   }
+  },
+  {
+   "text": "Name something you’d find at the beach",
+   "answers": {
+    "plankton": [
+     "Sand",
+     "Shells | Seashell",
+     "Water"
+    ],
+    "clever": [
+     "Towel",
+     "Umbrella",
+     "Sunscreen"
+    ],
+    "schooler": [
+     "Crab",
+     "Seagull",
+     "Bucket",
+     "Surfboard",
+     "Lifeguard"
+    ],
+    "rare": [
+     "Sandcastle",
+     "Kite",
+     "Cooler",
+     "Volleyball",
+     "Seaweed"
+    ],
+    "deepcut": [
+     "Driftwood",
+     "Sea glass",
+     "Jellyfish",
+     "Sand dollar",
+     "Flip flops"
+    ],
+    "nichion": [
+     "Sandpiper",
+     "Lugworm",
+     "Mermaid’s purse",
+     "Tide pool",
+     "Barnacle"
+    ]
+   }
+  }
+ ],
+ "2026-11-23": [
+  {
+   "text": "Name a musical instrument",
+   "answers": {
+    "plankton": [
+     "Guitar",
+     "Piano"
+    ],
+    "clever": [
+     "Drums",
+     "Violin"
+    ],
+    "schooler": [
+     "Flute",
+     "Trumpet",
+     "Saxophone | Sax",
+     "Bass"
+    ],
+    "rare": [
+     "Cello",
+     "Clarinet",
+     "Harp",
+     "Ukulele",
+     "Trombone",
+     "Harmonica"
+    ],
+    "deepcut": [
+     "Oboe",
+     "Bassoon",
+     "Banjo",
+     "Accordion",
+     "Xylophone",
+     "Tuba",
+     "French horn",
+     "Mandolin"
+    ],
+    "nichion": [
+     "Theremin",
+     "Didgeridoo",
+     "Hurdy-gurdy",
+     "Sitar",
+     "Bagpipes",
+     "Kalimba",
+     "Glockenspiel",
+     "Ocarina"
+    ]
+   }
+  },
+  {
+   "text": "Name a famous painter",
+   "answers": {
+    "plankton": [
+     "Picasso | Pablo Picasso",
+     "Van Gogh | Vincent van Gogh"
+    ],
+    "clever": [
+     "Da Vinci | Leonardo da Vinci | Leonardo"
+    ],
+    "schooler": [
+     "Monet | Claude Monet",
+     "Michelangelo",
+     "Bob Ross"
+    ],
+    "rare": [
+     "Rembrandt",
+     "Dali | Salvador Dali",
+     "Frida Kahlo | Kahlo",
+     "Warhol | Andy Warhol"
+    ],
+    "deepcut": [
+     "Matisse",
+     "Vermeer",
+     "Klimt",
+     "Pollock | Jackson Pollock",
+     "Renoir",
+     "Cezanne",
+     "Raphael",
+     "Hopper | Edward Hopper"
+    ],
+    "nichion": [
+     "Caravaggio",
+     "Bosch | Hieronymus Bosch",
+     "Turner",
+     "Basquiat",
+     "Hokusai",
+     "Kandinsky",
+     "Magritte",
+     "Rothko",
+     "Bruegel"
+    ]
+   }
+  },
+  {
+   "text": "Name a sport played with a ball",
+   "answers": {
+    "plankton": [
+     "Soccer | Football",
+     "Basketball"
+    ],
+    "clever": [
+     "Baseball",
+     "Tennis"
+    ],
+    "schooler": [
+     "Volleyball",
+     "Golf",
+     "American football"
+    ],
+    "rare": [
+     "Rugby",
+     "Cricket",
+     "Bowling",
+     "Softball",
+     "Ping pong | Table tennis"
+    ],
+    "deepcut": [
+     "Lacrosse",
+     "Water polo",
+     "Handball",
+     "Squash",
+     "Dodgeball",
+     "Polo",
+     "Kickball"
+    ],
+    "nichion": [
+     "Sepak takraw",
+     "Jai alai",
+     "Pickleball",
+     "Hurling",
+     "Bocce",
+     "Croquet",
+     "Pelota",
+     "Korfball"
+    ]
+   }
+  },
+  {
+   "text": "Name a country in Europe",
+   "answers": {
+    "plankton": [
+     "France",
+     "Germany"
+    ],
+    "clever": [
+     "Italy",
+     "Spain"
+    ],
+    "schooler": [
+     "England | UK | United Kingdom",
+     "Greece",
+     "Portugal",
+     "Ireland"
+    ],
+    "rare": [
+     "Sweden",
+     "Norway",
+     "Poland",
+     "Switzerland",
+     "Netherlands | Holland",
+     "Belgium",
+     "Austria"
+    ],
+    "deepcut": [
+     "Croatia",
+     "Hungary",
+     "Czechia | Czech Republic",
+     "Finland",
+     "Iceland",
+     "Romania",
+     "Denmark",
+     "Ukraine"
+    ],
+    "nichion": [
+     "Liechtenstein",
+     "Andorra",
+     "San Marino",
+     "Moldova",
+     "Montenegro",
+     "Estonia",
+     "Latvia",
+     "Lithuania",
+     "Slovenia",
+     "North Macedonia"
+    ]
+   }
+  },
+  {
+   "text": "Name a type of cheese",
+   "answers": {
+    "plankton": [
+     "Cheddar",
+     "Mozzarella"
+    ],
+    "clever": [
+     "Swiss",
+     "Parmesan"
+    ],
+    "schooler": [
+     "American",
+     "Brie",
+     "Gouda",
+     "Provolone"
+    ],
+    "rare": [
+     "Feta",
+     "Blue cheese",
+     "Pepper jack",
+     "Ricotta",
+     "Colby"
+    ],
+    "deepcut": [
+     "Gruyere",
+     "Camembert",
+     "Havarti",
+     "Manchego",
+     "Halloumi",
+     "Gorgonzola",
+     "Roquefort",
+     "Burrata"
+    ],
+    "nichion": [
+     "Limburger",
+     "Epoisses",
+     "Taleggio",
+     "Raclette",
+     "Comte",
+     "Paneer",
+     "Casu marzu",
+     "Stilton",
+     "Emmental"
+    ]
+   }
+  }
+ ],
+ "2026-11-24": [
+  {
+   "text": "Name an animal with stripes",
+   "answers": {
+    "plankton": [
+     "Zebra",
+     "Tiger"
+    ],
+    "clever": [
+     "Skunk",
+     "Bee | Bumblebee"
+    ],
+    "schooler": [
+     "Raccoon",
+     "Chipmunk",
+     "Clownfish",
+     "Bass"
+    ],
+    "rare": [
+     "Okapi",
+     "Lemur | Ring-tailed lemur",
+     "Wasp",
+     "Hyena"
+    ],
+    "deepcut": [
+     "Numbat",
+     "Bongo",
+     "Striped bass",
+     "Tapir",
+     "Lionfish"
+    ],
+    "nichion": [
+     "Thylacine | Tasmanian tiger",
+     "Quagga",
+     "Banded mongoose",
+     "Coral snake",
+     "Zebra shark"
+    ]
+   }
+  },
+  {
+   "text": "Name a famous scientist",
+   "answers": {
+    "plankton": [
+     "Einstein | Albert Einstein",
+     "Newton | Isaac Newton"
+    ],
+    "clever": [
+     "Marie Curie | Curie",
+     "Darwin | Charles Darwin"
+    ],
+    "schooler": [
+     "Tesla | Nikola Tesla",
+     "Stephen Hawking | Hawking",
+     "Galileo"
+    ],
+    "rare": [
+     "Edison | Thomas Edison",
+     "Bill Nye",
+     "Neil deGrasse Tyson",
+     "Copernicus"
+    ],
+    "deepcut": [
+     "Rosalind Franklin",
+     "Mendel | Gregor Mendel",
+     "Faraday",
+     "Pasteur",
+     "Feynman"
+    ],
+    "nichion": [
+     "Lise Meitner",
+     "Ramanujan",
+     "Emmy Noether",
+     "Alan Turing | Turing",
+     "Ada Lovelace",
+     "Mary Anning"
+    ]
+   }
+  },
+  {
+   "text": "Name a vegetable",
+   "answers": {
+    "plankton": [
+     "Carrot",
+     "Broccoli"
+    ],
+    "clever": [
+     "Potato",
+     "Lettuce",
+     "Corn"
+    ],
+    "schooler": [
+     "Spinach",
+     "Onion",
+     "Celery",
+     "Pea",
+     "Cucumber",
+     "Tomato"
+    ],
+    "rare": [
+     "Cauliflower",
+     "Asparagus",
+     "Zucchini",
+     "Green bean",
+     "Bell pepper | Pepper",
+     "Cabbage",
+     "Kale"
+    ],
+    "deepcut": [
+     "Brussels sprout",
+     "Eggplant | Aubergine",
+     "Artichoke",
+     "Beet | Beetroot",
+     "Radish",
+     "Leek",
+     "Squash"
+    ],
+    "nichion": [
+     "Kohlrabi",
+     "Jicama",
+     "Okra",
+     "Parsnip",
+     "Rutabaga",
+     "Bok choy",
+     "Fennel",
+     "Daikon",
+     "Celeriac"
+    ]
+   }
+  },
+  {
+   "text": "Name a superhero",
+   "answers": {
+    "plankton": [
+     "Spider-Man | Spiderman",
+     "Batman"
+    ],
+    "clever": [
+     "Superman"
+    ],
+    "schooler": [
+     "Iron Man",
+     "Wonder Woman",
+     "Captain America",
+     "Hulk",
+     "Thor"
+    ],
+    "rare": [
+     "Black Panther",
+     "Wolverine",
+     "Flash | The Flash",
+     "Black Widow",
+     "Aquaman"
+    ],
+    "deepcut": [
+     "Deadpool",
+     "Doctor Strange",
+     "Green Lantern",
+     "Ant-Man",
+     "Captain Marvel",
+     "Hawkeye"
+    ],
+    "nichion": [
+     "Squirrel Girl",
+     "Moon Knight",
+     "Blue Beetle",
+     "Booster Gold",
+     "Swamp Thing",
+     "Nightcrawler",
+     "Martian Manhunter"
+    ]
+   }
+  },
+  {
+   "text": "Name a type of tree",
+   "answers": {
+    "plankton": [
+     "Oak",
+     "Pine"
+    ],
+    "clever": [
+     "Maple",
+     "Palm"
+    ],
+    "schooler": [
+     "Birch",
+     "Willow",
+     "Apple",
+     "Christmas tree",
+     "Redwood"
+    ],
+    "rare": [
+     "Cherry",
+     "Spruce",
+     "Cedar",
+     "Elm",
+     "Sequoia",
+     "Fir"
+    ],
+    "deepcut": [
+     "Baobab",
+     "Magnolia",
+     "Aspen",
+     "Sycamore",
+     "Cypress",
+     "Dogwood",
+     "Ash",
+     "Beech"
+    ],
+    "nichion": [
+     "Ginkgo",
+     "Hornbeam",
+     "Larch",
+     "Yew",
+     "Joshua tree",
+     "Dragon blood tree",
+     "Banyan",
+     "Tamarack"
+    ]
+   }
+  }
+ ],
+ "2026-11-25": [
+  {
+   "text": "Name a color",
+   "answers": {
+    "plankton": [
+     "Blue",
+     "Red"
+    ],
+    "clever": [
+     "Green",
+     "Purple"
+    ],
+    "schooler": [
+     "Yellow",
+     "Orange",
+     "Pink",
+     "Black"
+    ],
+    "rare": [
+     "Teal",
+     "Turquoise",
+     "Maroon",
+     "Navy",
+     "Brown",
+     "Gray | Grey"
+    ],
+    "deepcut": [
+     "Magenta",
+     "Chartreuse",
+     "Lavender",
+     "Indigo",
+     "Cyan",
+     "Burgundy",
+     "Beige"
+    ],
+    "nichion": [
+     "Vermilion",
+     "Cerulean",
+     "Puce",
+     "Fuchsia",
+     "Mauve",
+     "Ochre",
+     "Periwinkle",
+     "Celadon"
+    ]
+   }
+  },
+  {
+   "text": "Name a board game",
+   "answers": {
+    "plankton": [
+     "Monopoly",
+     "Chess"
+    ],
+    "clever": [
+     "Scrabble",
+     "Clue | Cluedo"
+    ],
+    "schooler": [
+     "Checkers",
+     "Sorry",
+     "Risk",
+     "Candy Land"
+    ],
+    "rare": [
+     "Catan | Settlers of Catan",
+     "Battleship",
+     "Trivial Pursuit",
+     "Life | The Game of Life",
+     "Operation"
+    ],
+    "deepcut": [
+     "Ticket to Ride",
+     "Pandemic",
+     "Mouse Trap",
+     "Backgammon",
+     "Stratego",
+     "Othello"
+    ],
+    "nichion": [
+     "Go",
+     "Carcassonne",
+     "Azul",
+     "Wingspan",
+     "Mancala",
+     "Parcheesi",
+     "Twilight Imperium"
+    ]
+   }
+  },
+  {
+   "text": "Name a pasta shape",
+   "answers": {
+    "plankton": [
+     "Spaghetti",
+     "Penne"
+    ],
+    "clever": [
+     "Macaroni",
+     "Fettuccine"
+    ],
+    "schooler": [
+     "Lasagna",
+     "Ravioli",
+     "Linguine",
+     "Rigatoni"
+    ],
+    "rare": [
+     "Farfalle | Bowtie",
+     "Rotini",
+     "Tortellini",
+     "Ziti",
+     "Angel hair"
+    ],
+    "deepcut": [
+     "Orzo",
+     "Gnocchi",
+     "Orecchiette",
+     "Pappardelle",
+     "Fusilli",
+     "Cavatappi"
+    ],
+    "nichion": [
+     "Bucatini",
+     "Radiatori",
+     "Casarecce",
+     "Strozzapreti",
+     "Trofie",
+     "Gemelli",
+     "Conchiglie"
+    ]
+   }
+  }
+ ]
+}

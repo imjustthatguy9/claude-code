@@ -103,8 +103,8 @@
       ],
     },
 
-    // --- Tier 6: THE MANSELLION — a deep-sea lion with a glowing mane --------
-    mansellion: {
+    // --- Tier 6: THE NICHION — a deep-sea lion with a glowing mane --------
+    nichion: {
       pal: { o: '#9a4a12', O: '#ff9a3c', m: '#ffb84d', g: '#b88412', G: '#ffcf3f', h: '#fff2b0', w: W, k: K, n: '#5a2a0a', f: '#ff6a3c' },
       rows: [
         '.....o..o.o..o......',

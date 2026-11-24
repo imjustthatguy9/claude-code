@@ -1,11 +1,16 @@
-body.admin {
+#admin-root {
+  position: fixed; inset: 0; z-index: 40; overflow: auto;
+  padding: 20px 16px 80px;
   background:
-    linear-gradient(rgba(11, 29, 63, 0.92), rgba(5, 13, 34, 0.97)),
+    linear-gradient(rgba(11, 29, 63, 0.94), rgba(5, 13, 34, 0.98)),
     repeating-linear-gradient(0deg, #0b1d3f 0 4px, #0d2149 4px 8px);
-  background-attachment: fixed;
-  min-height: 100vh;
+  animation: fade 200ms both;
 }
-#admin { max-width: 1240px; margin: 0 auto; padding: 20px 16px 80px; }
+body.admin-open { overflow: hidden; }
+body.admin-open #app { visibility: hidden; }
+.a-top, .a-grid { max-width: 1240px; margin-left: auto; margin-right: auto; }
+.publish-note { flex-basis: 100%; font-size: 15px; color: var(--ink); background: var(--accent); padding: 8px 12px; box-shadow: 0 3px 0 var(--accent-dk); }
+.publish-note b { font-weight: 700; }
 
 .a-top { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; justify-content: space-between; margin-bottom: 28px; }
 .a-brand { display: flex; align-items: center; gap: 14px; }
@@ -44,7 +49,7 @@ body.admin {
 .cal-day .dots { display: flex; gap: 2px; height: 5px; }
 .cal-day .dots i { width: 5px; height: 5px; background: var(--t-plankton); }
 .cal-day .dots i.off { background: rgba(185, 207, 238, 0.18); }
-.cal-day.full .dots i { background: var(--t-mansellion); }
+.cal-day.full .dots i { background: var(--t-nichion); }
 .cal-legend { margin-top: 14px; font-size: 14px; color: var(--muted); display: grid; gap: 6px; }
 .cal-legend span { display: inline-flex; align-items: center; gap: 8px; }
 .cal-legend i { display: inline-block; width: 12px; height: 12px; }

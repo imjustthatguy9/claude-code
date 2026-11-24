@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert');
-const { matchGuess, editDistance, normalize, findDuplicates } = require('../lib/match');
+const { matchGuess, editDistance, normalize, findDuplicates } = require('../src/engine');
 
 const answers = {
   plankton: ['Apple', 'Banana'],
@@ -9,13 +9,13 @@ const answers = {
   schooler: ['Grape | Grapes'],
   rare: ['Kiwi'],
   deepcut: ['Dragon fruit | Pitaya'],
-  mansellion: ['Durian', 'Starfruit | Carambola', 'New York City | NYC'],
+  nichion: ['Durian', 'Starfruit | Carambola', 'New York City | NYC'],
 };
 
 test('exact and case/punctuation-insensitive matches', () => {
   assert.equal(matchGuess('apple', answers).tier, 'plankton');
   assert.equal(matchGuess('  APPLE!! ', answers).tier, 'plankton');
-  assert.equal(matchGuess('The Durian', answers).tier, 'mansellion');
+  assert.equal(matchGuess('The Durian', answers).tier, 'nichion');
   assert.equal(matchGuess('dragonfruit', answers).tier, 'deepcut');
   assert.equal(matchGuess('apple', answers).corrected, false);
 });
@@ -33,8 +33,8 @@ test('auto-corrects small typos', () => {
   const m = matchGuess('strawbery', answers);
   assert.equal(m.tier, 'clever');
   assert.equal(m.corrected, true);
-  assert.equal(matchGuess('duraian', answers).tier, 'mansellion');
-  assert.equal(matchGuess('carambolla', answers).tier, 'mansellion');
+  assert.equal(matchGuess('duraian', answers).tier, 'nichion');
+  assert.equal(matchGuess('carambolla', answers).tier, 'nichion');
   assert.equal(matchGuess('kiwj', answers).tier, 'rare');           // 1 typo on 4 letters
   assert.equal(matchGuess('strwabrery', answers).tier, 'clever');   // transposition + typo
 });
@@ -48,7 +48,7 @@ test('does not over-correct', () => {
 });
 
 test('exact match beats a fuzzy match in a deeper tier', () => {
-  const a = { plankton: ['Cat'], mansellion: ['Cats eye'] , rare: ['Mace'], deepcut: ['Maze'] };
+  const a = { plankton: ['Cat'], nichion: ['Cats eye'] , rare: ['Mace'], deepcut: ['Maze'] };
   assert.equal(matchGuess('maze', a).tier, 'deepcut');
   assert.equal(matchGuess('mace', a).tier, 'rare');
 });

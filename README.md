@@ -1,6 +1,8 @@
-# 🌊 Mansellion
+# 🌊 Nichion
 
-A daily pixel-art ocean guessing game. Each day has up to **five prompts** and you get **one guess** for each. Common answers keep you in the shallows. Rarer answers sink your little sub deeper and score more points.
+A daily pixel-art ocean guessing game in **one HTML file**: [`nichion.html`](nichion.html). There's no server and no install. Open it in any browser, or share it the way you'd share any file.
+
+Each day has up to **five prompts**, and you get **one guess** per prompt. Common answers keep you in the shallows. Rarer answers sink your sub deeper and score more points.
 
 | Tier | Depth | Points |
 |---|---|---|
@@ -9,71 +11,50 @@ A daily pixel-art ocean guessing game. Each day has up to **five prompts** and y
 | 🐟 Schooler | 30 m | 30 |
 | 🐢 Rare | 60 m | 60 |
 | 🏮 Deep Cut | 85 m | 85 |
-| 🦁 Mansellion | 100 m | 100 |
+| 🦁 Nichion | 100 m | 100 |
 
-A guess that isn't on the board scores 0 and the sub stays where it is.
+## Running a game (admin)
 
-## Run it
+1. Open `nichion.html`. Tap **?** and choose **Admin: edit prompts**, or add `#admin` to the end of the address.
+2. The first time, you choose an admin password. It's saved into every game file you download from then on.
+3. Pick a day on the calendar and add 1–5 prompts. Each prompt has a box for each tier, with **one answer per line**. Extra accepted spellings go after a bar: `New York City | NYC | Big Apple`. Players see the first spelling.
+4. Use **Test a guess** under each prompt to check where an answer would land, including any auto-correction.
+5. Press **Save Day**. This keeps your edits in your browser.
+6. Press **Download game file** to get a new `nichion.html` with all your prompts inside it. **Share that file.** Players only see changes once they have the new file.
 
-Requires Node 18 or newer. There are no dependencies to install.
+The **More** menu has: back up / restore prompts as JSON, change password, reset your own plays (for testing), and discard edits.
+
+The file ships with sample prompts for Nov 22–25, 2026. Replace them with your own.
+
+## How the game plays
+
+- A day runs from each player's own local midnight to the next.
+- The bar at the top shows one square per prompt and which prompt you're on. Each answer gets a **Next** button.
+- The results page shows your score, a points-per-prompt chart, a dive-depth chart and your guesses. On days with fewer than 5 prompts it adds "(out of N questions today)" under the score.
+- Your current streak, best streak, number of dives and best score are kept. Days with no prompts don't break a streak.
+- **Yesterday's depths** lists every answer in every tier for the day before.
+- When a day has no prompts, pressing Play says *the ocean is calm*.
+- **Auto-correct:** capital letters, punctuation, accents, a leading "the/a/an" and simple plurals are ignored. Typos are forgiven based on the answer's length: 1–3 letters must be exact, 4–5 letters allow 1 typo, 6–9 allow 2, and 10 or more allow 3.
+
+## Fair play — and its limits
+
+A single file has no server to keep secrets on, so Nichion does what a standalone file can:
+
+- **Answers are scrambled inside the file.** Viewing the page source or searching it won't show answers or future prompts. A prompt's text only appears when you reach it, and the full answer sheet only shows the next day.
+- **One guess per prompt, saved before the result is shown.** Reloading the page doesn't give you another try.
+- **Clock check.** Each browser remembers the latest day it has seen. If the device's date is turned back, play stops until the date is right again. If someone moves their clock forward to peek at tomorrow, that day is recorded as played, so they can't replay it when it really arrives.
+- **The admin panel is password-protected.** Only a salted hash of the password is stored.
+
+**Limits:** a determined player who reads the code could un-scramble the answers, and anyone can clear their browser data to reset their own progress. Truly cheat-proof play needs a server.
+
+## Development
+
+The editable source is in `src/`. Rebuild the single file after changing it:
 
 ```bash
-ADMIN_PASSWORD=choose-something npm start
-# game:  http://localhost:3000
-# admin: http://localhost:3000/admin
+node build.js          # → nichion.html (with src/sample-days.json)
+node build.js --empty  # → nichion.html with no prompts
+npm test
 ```
 
-Optional: `npm run seed` adds sample prompts for yesterday, today and tomorrow so you can try it out. `npm test` runs the matcher and anti-cheat tests.
-
-### Settings (environment variables)
-
-| Variable | Default | What it does |
-|---|---|---|
-| `ADMIN_PASSWORD` | generated | Admin login. If you don't set it, a random one is written to `data/admin-password.txt` and printed on first start. |
-| `GAME_TZ` | `America/New_York` | The time zone where each day starts at midnight. All players share it. |
-| `PORT` | `3000` | HTTP port. |
-| `DATA_DIR` | `./data` | Where `db.json` (prompts, players, guesses) and the cookie-signing key are stored. **Back this up.** |
-| `SECURE_COOKIES` | off | Set to `1` when serving over HTTPS. |
-
-## Admin
-
-Open `/admin` and log in. Then:
-
-- **Calendar.** Each day shows how many prompts it has (gold = all 5). Today has a gold outline. The panel also lists any of the next 7 days that have no prompts.
-- **Editor.** A day holds 1–5 prompts. Each prompt has six boxes, one per tier, with **one answer per line**. To accept other spellings, separate them with `|`, as in `New York City | NYC | Big Apple`. Players see the first spelling.
-- **Test a guess.** Type a guess under a prompt to see which tier it would land in, including any auto-correction. It works on unsaved edits too.
-- A warning appears when the same answer is listed in two tiers.
-- Use **Export** / **Import** to back up all prompts as JSON or load them from a file.
-- You can edit today while it's live. Players who already answered keep their scores.
-
-### Auto-correct
-
-Capital letters, punctuation, accents, a leading "the/a/an" and simple plurals are all ignored. Small typos are forgiven based on the answer's length: answers of 1–3 letters must be exact, 4–5 letters allow 1 typo, 6–9 allow 2, and 10 or more allow 3. Swapping two neighbouring letters counts as one typo. When a typo could match answers in two tiers, an exact match wins first, then the closer match.
-
-## Fair play
-
-- The answers stay on the server. During a day the browser only ever receives the current prompt's text. Your own result is revealed after you guess, and the full answer sheet only appears the next day under **Yesterday's depths**.
-- The server scores every guess and records it against a signed, HttpOnly player cookie. Each prompt takes exactly one guess, in order. Re-guessing, skipping ahead and forged cookies are all rejected.
-- The day comes from the **server's** clock in `GAME_TZ`, so changing your device's clock does nothing. Future days can only be read by the admin.
-- Admin endpoints need a signed session cookie and a JSON body, which blocks cross-site form posts. Repeated wrong passwords are rate-limited.
-- One limit: players are anonymous, so someone who clears their cookies or opens a private window gets a fresh player. To stop that completely you'd need player accounts.
-
-## Hosting
-
-`server.js` is a single Node process that stores everything in `DATA_DIR`. Any host that runs Node and has a **persistent disk** will work, such as a small VPS, Fly.io with a volume, or Render with a disk. On a host without a persistent disk, prompts and streaks are lost on every redeploy.
-
-## Layout
-
-```
-server.js            HTTP server, API routes, cookies, admin auth
-lib/match.js         answer normalising + fuzzy matching (auto-correct)
-lib/game.js          guesses, scoring, streaks, what players may see
-lib/days.js          time-zone-aware "today"
-lib/store.js         JSON file storage (atomic writes)
-public/              game (index.html) and admin (admin.html) front ends
-  js/sprites.js      hand-placed pixel sprites
-  js/ocean.js        the scrolling, dithered ocean background
-  js/charts.js       results charts
-scripts/seed.js      sample prompts
-test/                node:test suites
-```
+The fonts *Press Start 2P* and *Pixelify Sans* are embedded under the SIL Open Font License.

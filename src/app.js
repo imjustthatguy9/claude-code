@@ -1,7 +1,14 @@
-(function () {
+document.addEventListener('DOMContentLoaded', function () {
   'use strict';
 
+  // The untouched page source, captured before anything changes the DOM, so
+  // the admin can download a copy of this file with new prompts inside.
+  const PRISTINE = '<!doctype html>\n' + document.documentElement.outerHTML;
+
   // ------------------------------------------------------------------ setup
+  const E = window.NichionEngine;
+  const DATA = JSON.parse(document.getElementById('nichion-data').textContent);
+  const game = new E.Game(DATA, E.makeStorage('nichion_save_v1'));
   const $ = (s, r = document) => r.querySelector(s);
   const screenEl = $('#screen');
   const ocean = new Ocean($('#ocean'));
@@ -9,36 +16,24 @@
   const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-  const EMOJI = { plankton: '🦠', clever: '🐙', schooler: '🐟', rare: '🐢', deepcut: '🏮', mansellion: '🦁', miss: '🫧' };
+  const EMOJI = { plankton: '🦠', clever: '🐙', schooler: '🐟', rare: '🐢', deepcut: '🏮', nichion: '🦁', miss: '🫧' };
   const BLURB = {
     plankton: 'Everyone thought of it.',
     clever: 'A little too obvious-clever.',
     schooler: 'Swimming with the pack.',
     rare: 'Not many go this deep.',
     deepcut: 'A true deep cut.',
-    mansellion: 'You found the Mansellion!',
+    nichion: 'You found the Nichion!',
   };
 
-  let S = null;          // server state
+  let S = null;          // game state
   let tiers = [], tierBy = {};
   let resetAt = 0;
   let busy = false;
   let view = 'title';
 
-  async function api(path, opts = {}) {
-    const res = await fetch(path, {
-      credentials: 'same-origin',
-      headers: opts.body ? { 'Content-Type': 'application/json' } : {},
-      ...opts,
-      body: opts.body ? JSON.stringify(opts.body) : undefined,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw Object.assign(new Error(data.message || 'Network error'), { code: data.error, status: res.status });
-    return data;
-  }
-
-  async function load() {
-    S = await api('/api/state');
+  function load() {
+    S = game.state();
     tiers = S.tiers;
     tierBy = Object.fromEntries(tiers.map(t => [t.key, t]));
     resetAt = Date.now() + S.resetInMs;
@@ -127,10 +122,12 @@
       <p>Small typos are forgiven — the sonar auto-corrects answers that are close.</p>
       <p>Come back tomorrow to see <b>yesterday’s full answer sheet</b>, and keep your streak alive.</p>
       <button class="btn wide" data-autofocus>GOT IT</button>
+      <button class="admin-link" data-admin>Admin: edit prompts</button>
     </div>`);
     node.querySelector('.tier-legend').append(...tierLegend());
     const close = modal(node);
     node.querySelector('.btn').addEventListener('click', close);
+    node.querySelector('[data-admin]').addEventListener('click', () => { close(); setTimeout(openAdmin, 180); });
   }
 
   function noPromptsModal() {
@@ -172,15 +169,16 @@
   function renderTitle() {
     ocean.setMode('surface');
     const p = S.play;
-    const letters = 'MANSELLION'.split('').map((c, i) => `<span style="animation-delay:${-i * 0.14}s">${c}</span>`).join('');
+    const letters = 'NICHION'.split('').map((c, i) => `<span style="animation-delay:${-i * 0.14}s">${c}</span>`).join('');
     let status = '';
-    if (!p.total) status = 'No prompts today — the water’s still.';
+    if (S.clockProblem) status = `Your device’s date looks earlier than a day you already played (${esc(fmtDate(S.clockProblem, { month: 'short', day: 'numeric' }))}). Fix the clock to dive.`;
+    else if (!p.total) status = 'No prompts today — the water’s still.';
     else if (p.done) status = `Today’s dive is done: <b>${p.score} pts</b>.`;
     else if (p.guesses.length) status = `Dive in progress — prompt <b>${p.current + 1}</b> of ${p.total}.`;
     else status = `<b>${p.total}</b> prompt${p.total === 1 ? '' : 's'} today. One guess each.`;
 
     const node = h(`<section class="screen title">
-      <h1 class="logo" aria-label="Mansellion">${letters}</h1>
+      <h1 class="logo" aria-label="Nichion">${letters}</h1>
       <p class="tagline">How deep can you go?</p>
       <div class="title-date">${esc(fmtDate(S.today).toUpperCase())}</div>
       <div class="title-spacer"></div>
@@ -194,7 +192,10 @@
       </div>
     </section>`);
     node.querySelector('.title-panel > div:last-child').replaceWith(statsRow());
+    if (!S.persistent) node.querySelector('.title-status').after(h('<p class="warn-line">This browser isn’t saving progress (private mode?). Your streak won’t be kept.</p>'));
     node.querySelector('[data-play]').addEventListener('click', () => {
+      load();
+      if (S.clockProblem) return toast('Your device clock looks wrong — set it to today’s date.', 'error');
       if (!S.play.total) return noPromptsModal();
       if (S.play.done) return renderResults();
       renderGame();
@@ -309,12 +310,13 @@
       btn.disabled = true; input.readOnly = true;
       btn.textContent = '···';
       try {
-        const res = await api('/api/guess', { method: 'POST', body: { date: S.today, index: i, guess } });
-        S.play = res.play; S.stats = res.stats;
-        revealResult(card, hudEl, res.result);
+        const result = game.guess({ date: S.today, index: i, guess });
+        load();
+        revealResult(card, hudEl, result);
       } catch (err) {
-        if (err.code === 'day_changed') { toast('A new day has begun — reloading…'); await sleep(900); await load(); return renderTitle(); }
-        if (err.code === 'out_of_order' || err.code === 'done') { await load(); return renderGame(); }
+        if (err.code === 'day_changed') { toast('A new day has begun — reloading…'); await sleep(900); load(); return renderTitle(); }
+        if (err.code === 'clock') { load(); return renderTitle(); }
+        if (err.code === 'out_of_order' || err.code === 'done') { load(); return renderGame(); }
         toast(err.message, 'error');
         btn.disabled = false; input.readOnly = false; btn.textContent = 'DIVE'; input.focus();
       } finally { busy = false; }
@@ -327,7 +329,7 @@
     const last = p.done;
     const form = card.querySelector('form');
     const hint = card.querySelector('.hint');
-    const res = h(`<div class="result ${t ? '' : 'miss'} ${r.tier === 'mansellion' ? 'big' : ''}" style="--tc:${tierColor(r.tier)}">
+    const res = h(`<div class="result ${t ? '' : 'miss'} ${r.tier === 'nichion' ? 'big' : ''}" style="--tc:${tierColor(r.tier)}">
       <div class="result-art"></div>
       <div>
         <div class="result-tier">${t ? esc(t.name).toUpperCase() : 'NO CATCH'}</div>
@@ -337,13 +339,13 @@
       </div>
       <div class="result-actions"><button class="btn wide" data-next>${last ? 'SEE RESULTS' : 'NEXT PROMPT'} <span class="arrow">▸</span></button></div>
     </div>`);
-    res.querySelector('.result-art').append(t ? Sprites.img(r.tier, r.tier === 'mansellion' ? 4 : r.tier === 'plankton' || r.tier === 'schooler' ? 6 : 5) : Sprites.img('bubble', 10));
+    res.querySelector('.result-art').append(t ? Sprites.img(r.tier, r.tier === 'nichion' ? 4 : r.tier === 'plankton' || r.tier === 'schooler' ? 6 : 5) : Sprites.img('bubble', 10));
     form.replaceWith(res);
     hint.remove();
 
     // Dive!
     ocean.setDepth(depthSoFar());
-    if (r.tier === 'mansellion') { ocean.celebrate('#ffcf3f'); const f = h('<div class="flash"></div>'); document.body.append(f); setTimeout(() => f.remove(), 800); }
+    if (r.tier === 'nichion') { ocean.celebrate('#ffcf3f'); const f = h('<div class="flash"></div>'); document.body.append(f); setTimeout(() => f.remove(), 800); }
     else if (r.tier === 'deepcut') ocean.celebrate('#fff3a0');
     bump(hudEl.querySelector('[data-depth]'), depthSoFar() + 'm');
     bump(hudEl.querySelector('[data-score]'), p.score);
@@ -361,7 +363,7 @@
   // ---------------------------------------------------------------- results
   const RANKS = [
     [0, 'Puddle Paddler'], [0.15, 'Reef Wader'], [0.3, 'Kelp Climber'],
-    [0.45, 'Trench Diver'], [0.6, 'Abyss Walker'], [0.75, 'Leviathan Hunter'], [0.9, 'Mansellion Tamer'],
+    [0.45, 'Trench Diver'], [0.6, 'Abyss Walker'], [0.75, 'Leviathan Hunter'], [0.9, 'Nichion Tamer'],
   ];
 
   function renderResults() {
@@ -441,7 +443,7 @@
       const ms = resetAt - Date.now();
       if (ms <= 0) {
         clearInterval(startCountdown._i);
-        await load();
+        load();
         toast('A new dive is ready!');
         return renderTitle();
       }
@@ -455,7 +457,7 @@
   async function share() {
     const p = S.play;
     const text = [
-      `MANSELLION · ${fmtDate(S.today, { month: 'short', day: 'numeric' })}`,
+      `NICHION · ${fmtDate(S.today, { month: 'short', day: 'numeric' })}`,
       p.guesses.map(g => EMOJI[g.tier || 'miss']).join(''),
       `↓${depthSoFar()}m · ${p.score} pts${p.total < 5 ? ` (out of ${p.total})` : ''}`,
       location.origin,
@@ -472,10 +474,9 @@
   async function renderYesterday() {
     const loading = h('<section class="screen"><div class="loading">SONAR<span>…</span></div></section>');
     show(loading, 'yesterday');
-    let Y;
-    try { Y = await api('/api/yesterday'); }
-    catch (e) { toast(e.message, 'error'); return renderTitle(); }
+    await sleep(250);
     if (view !== 'yesterday') return;
+    const Y = game.yesterday();
 
     const node = h(`<section class="screen yesterday">
       <div class="y-head px-box">
@@ -527,6 +528,12 @@
     show(node, 'yesterday');
   }
 
+  // ------------------------------------------------------------------ admin
+  function openAdmin() {
+    NichionAdmin.open({ data: DATA, pristine: PRISTINE, onExit: () => { load(); renderTitle(); } });
+  }
+  addEventListener('hashchange', () => { if (location.hash === '#admin' && !document.getElementById('admin-root')) openAdmin(); });
+
   // ------------------------------------------------------------------- boot
   $('#btn-home').addEventListener('click', () => { if (S) renderTitle(); });
   $('#btn-help').addEventListener('click', () => { if (S) helpModal(); });
@@ -535,21 +542,23 @@
   // Coming back to a tab left open overnight: refresh so it's the new day.
   document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState !== 'visible' || !S || busy) return;
-    if (Date.now() >= resetAt) { await load(); renderTitle(); toast('A new dive is ready!'); }
+    if (Date.now() >= resetAt) { load(); renderTitle(); toast('A new dive is ready!'); }
   });
 
   (async function boot() {
     show(h('<section class="screen"><div class="loading">DIVING<span>…</span></div></section>'), 'loading');
     try {
-      await load();
+      load();
       ocean.setDepth(depthSoFar(), { burst: false });
       renderTitle();
+      if (location.hash === '#admin') return openAdmin();
       let seen = false;
-      try { seen = localStorage.getItem('msl_seen_help') === '1'; localStorage.setItem('msl_seen_help', '1'); } catch {}
+      try { seen = localStorage.getItem('nichion_seen_help') === '1'; localStorage.setItem('nichion_seen_help', '1'); } catch {}
       if (!seen) setTimeout(helpModal, 500);
     } catch (e) {
       screenEl.innerHTML = '';
+      console.error(e);
       show(h(`<section class="screen"><div class="loading">NO SIGNAL — ${esc(e.message)}</div></section>`), 'error');
     }
   })();
-})();
+});
