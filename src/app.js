@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-  const EMOJI = { plankton: '🦠', clever: '🐙', schooler: '🐟', rare: '🐢', deepcut: '🏮', nichion: '🦁', miss: '🫧' };
+  const EMOJI = { plankton: '🦠', clever: '🐙', schooler: '🐟', rare: '🐢', deepcut: '🏮', nichion: '🦁', miss: '⌛' };
   const BLURB = {
     plankton: 'Everyone thought of it.',
     clever: 'A little too obvious-clever.',
@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // ---------------------------------------------------------- screen system
   function show(node, name) {
     view = name;
+    stopTimer();
     hideTip();
     const olds = [...screenEl.children];
     for (const old of olds) {
@@ -116,8 +117,8 @@ document.addEventListener('DOMContentLoaded', function () {
   function helpModal() {
     const node = h(`<div>
       <h2>HOW TO DIVE</h2>
-      <p>Every day there are up to <b>five prompts</b>. Give <b>one answer</b> to each.</p>
-      <p>Common answers keep you in the shallows. <b>Rarer answers sink you deeper</b> and score more. Miss the board entirely and you stay put.</p>
+      <p>Every day there are up to <b>five prompts</b>, and you get <b>25 seconds</b> for each.</p>
+      <p>Type answers until you hit one that’s on the board. Common answers keep you in the shallows; <b>rarer answers sink you deeper</b> and score more. Run out of time and you stay put.</p>
       <div class="tier-legend" style="margin:16px 0"></div>
       <p>Small typos are forgiven — the sonar auto-corrects answers that are close.</p>
       <p>Come back tomorrow to see <b>yesterday’s full answer sheet</b>, and keep your streak alive.</p>
@@ -175,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function () {
     else if (!p.total) status = 'No prompts today — the water’s still.';
     else if (p.done) status = `Today’s dive is done: <b>${p.score} pts</b>.`;
     else if (p.guesses.length) status = `Dive in progress — prompt <b>${p.current + 1}</b> of ${p.total}.`;
-    else status = `<b>${p.total}</b> prompt${p.total === 1 ? '' : 's'} today. One guess each.`;
+    else status = `<b>${p.total}</b> prompt${p.total === 1 ? '' : 's'} today · 25 seconds each.`;
 
     const node = h(`<section class="screen title">
       <h1 class="logo" aria-label="Nichion">${letters}</h1>
@@ -230,8 +231,8 @@ document.addEventListener('DOMContentLoaded', function () {
         pip.classList.add('done');
         if (!g.tier) pip.classList.add('miss');
         pip.style.setProperty('--tc', tierColor(g.tier));
-        pip.setAttribute('aria-label', `Prompt ${i + 1}: ${g.tier ? tierBy[g.tier].name : 'no catch'}`);
-        pip.dataset.tip = `<b>P${i + 1}</b> “${esc(g.guess)}” · ${g.tier ? esc(tierBy[g.tier].name) : 'No catch'}`;
+        pip.setAttribute('aria-label', `Prompt ${i + 1}: ${g.tier ? tierBy[g.tier].name : 'time ran out'}`);
+        pip.dataset.tip = g.tier ? `<b>P${i + 1}</b> “${esc(g.guess)}” · ${esc(tierBy[g.tier].name)}` : `<b>P${i + 1}</b> Time ran out`;
         if (i === pop) pip.classList.add('pop');
       } else {
         if (i === p.current) pip.classList.add('current');
@@ -281,44 +282,102 @@ document.addEventListener('DOMContentLoaded', function () {
     promptCard(card, hudEl);
   }
 
+  let timerId = 0;
+  const stopTimer = () => { clearInterval(timerId); timerId = 0; };
+
   function promptCard(card, hudEl) {
+    stopTimer();
     const p = S.play;
     const i = p.current;
     const prompt = p.prompts[i];
+    let deadline;
+    try { deadline = game.start({ date: S.today, index: i }); }
+    catch (err) { load(); return err.code === 'out_of_order' ? renderGame() : renderTitle(); }
+    const LIMIT = E.TIME_LIMIT_MS;
+
     card.innerHTML = '';
     card.append(h(`<div>
-      <div class="kicker"><span>PROMPT ${i + 1}</span><span>${i + 1} / ${p.total}</span></div>
+      <div class="kicker"><span>PROMPT ${i + 1} / ${p.total}</span><span class="timer-num" data-num aria-hidden="true">25</span></div>
+      <div class="timer" role="timer" aria-label="Time left"><i data-bar></i></div>
       <h2 class="prompt-text" id="prompt-text">${esc(prompt.text)}</h2>
       <form class="guess-form" autocomplete="off" novalidate>
         <label class="sr-only" for="guess">Your answer</label>
-        <input class="field" id="guess" name="guess" maxlength="60" placeholder="Your answer…" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-describedby="prompt-text">
+        <input class="field" id="guess" name="guess" maxlength="60" placeholder="Your answer…" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-describedby="prompt-text nope">
         <button class="btn" type="submit">DIVE</button>
       </form>
-      <p class="hint"><span>One guess. Rarer = deeper.</span><span><kbd>ENTER</kbd></span></p>
+      <div class="tries" data-tries>
+        <p class="nope" id="nope" role="status" aria-live="assertive"></p>
+        <div class="miss-chips" data-chips></div>
+      </div>
+      <p class="hint"><span>Not on the board? Keep trying until time runs out.</span><span><kbd>ENTER</kbd></span></p>
     </div>`));
     card.style.animation = 'none'; void card.offsetWidth; card.style.animation = 'screen-in 380ms both';
     const form = card.querySelector('form');
     const input = card.querySelector('input');
+    const btn = form.querySelector('button');
+    const bar = card.querySelector('[data-bar]'), num = card.querySelector('[data-num]'), timerEl = card.querySelector('.timer');
+    const nope = card.querySelector('.nope'), chips = card.querySelector('[data-chips]');
+    const renderChips = list => { chips.innerHTML = ''; list.forEach(m => chips.append(h(`<span class="miss-chip">✗ ${esc(m)}</span>`))); };
+    renderChips(p.misses || []);
     setTimeout(() => input.focus({ preventScroll: true }), 60);
+
+    // Countdown (wall-clock based, so reloading or switching tabs doesn't pause it).
+    let lastSec = null;
+    const tick = () => {
+      const left = Math.max(0, deadline - Date.now());
+      bar.style.width = (left / LIMIT) * 100 + '%';
+      const sec = Math.ceil(left / 1000);
+      if (sec !== lastSec) {
+        num.textContent = sec;
+        lastSec = sec;
+        timerEl.classList.toggle('low', sec <= 5);
+        num.classList.toggle('low', sec <= 5);
+        if (sec <= 5 && sec > 0) { num.classList.remove('tick'); void num.offsetWidth; num.classList.add('tick'); }
+      }
+      if (left <= 0) {
+        stopTimer();
+        try {
+          const rec = game.timeUp({ date: S.today, index: i });
+          load();
+          revealResult(card, hudEl, rec);
+        } catch (err) {
+          if (err.code === 'not_yet') { timerId = setInterval(tick, 100); return; }
+          load(); renderGame();
+        }
+      }
+    };
+    tick();
+    timerId = setInterval(tick, 100);
+
+    const shake = () => { input.classList.remove('shake'); void input.offsetWidth; input.classList.add('shake'); };
     form.addEventListener('submit', async e => {
       e.preventDefault();
-      if (busy) return;
+      if (busy || !timerId) return;
       const guess = input.value.trim();
-      if (!guess) { input.classList.remove('shake'); void input.offsetWidth; input.classList.add('shake'); input.focus(); return; }
+      if (!guess) { shake(); input.focus(); return; }
       busy = true;
-      const btn = form.querySelector('button');
-      btn.disabled = true; input.readOnly = true;
-      btn.textContent = '···';
       try {
         const result = game.guess({ date: S.today, index: i, guess });
+        if (result.invalid) {
+          shake();
+          nope.textContent = result.repeat ? `You already tried “${result.guess}”.` : `“${result.guess}” isn’t on the board — try again!`;
+          nope.classList.remove('show'); void nope.offsetWidth; nope.classList.add('show');
+          renderChips(result.misses);
+          input.value = '';
+          input.focus();
+          return;
+        }
+        stopTimer();
         load();
         revealResult(card, hudEl, result);
       } catch (err) {
+        stopTimer();
         if (err.code === 'day_changed') { toast('A new day has begun — reloading…'); await sleep(900); load(); return renderTitle(); }
         if (err.code === 'clock') { load(); return renderTitle(); }
         if (err.code === 'out_of_order' || err.code === 'done') { load(); return renderGame(); }
         toast(err.message, 'error');
-        btn.disabled = false; input.readOnly = false; btn.textContent = 'DIVE'; input.focus();
+        timerId = setInterval(tick, 100);
+        input.focus();
       } finally { busy = false; }
     });
   }
@@ -329,17 +388,22 @@ document.addEventListener('DOMContentLoaded', function () {
     const last = p.done;
     const form = card.querySelector('form');
     const hint = card.querySelector('.hint');
+    card.querySelector('[data-tries]')?.remove();
+    const timer = card.querySelector('.timer');
+    if (timer) { timer.classList.add('done'); if (r.timedOut) timer.querySelector('i').style.width = '0%'; }
+    const tries = r.misses && r.misses.length ? `<div class="result-tries">${r.misses.length} miss${r.misses.length === 1 ? '' : 'es'} first: ${r.misses.slice(0, 4).map(esc).join(', ')}${r.misses.length > 4 ? '…' : ''}</div>` : '';
     const res = h(`<div class="result ${t ? '' : 'miss'} ${r.tier === 'nichion' ? 'big' : ''}" style="--tc:${tierColor(r.tier)}">
       <div class="result-art"></div>
       <div>
-        <div class="result-tier">${t ? esc(t.name).toUpperCase() : 'NO CATCH'}</div>
+        <div class="result-tier">${t ? esc(t.name).toUpperCase() : 'TIME’S UP'}</div>
         <div class="result-gain">${t ? `<span class="pts">+${t.points} PTS</span><span>↓ ${t.depth}M</span>` : '<span>+0 PTS</span><span>STAY PUT</span>'}</div>
-        <div class="result-guess">${t ? esc(BLURB[r.tier]) + ' ' : 'Not on the board. '}${t ? `<br><q>${esc(r.matched)}</q>` : `You said <q>${esc(r.guess)}</q>`}</div>
+        <div class="result-guess">${t ? `${esc(BLURB[r.tier])}<br><q>${esc(r.matched)}</q>` : 'The clock ran out before you found an answer.'}</div>
+        ${tries}
         ${r.corrected ? `<div class="autocorrect" title="Close enough!">✎ auto-corrected from “${esc(r.guess)}”</div>` : ''}
       </div>
       <div class="result-actions"><button class="btn wide" data-next>${last ? 'SEE RESULTS' : 'NEXT PROMPT'} <span class="arrow">▸</span></button></div>
     </div>`);
-    res.querySelector('.result-art').append(t ? Sprites.img(r.tier, r.tier === 'nichion' ? 4 : r.tier === 'plankton' || r.tier === 'schooler' ? 6 : 5) : Sprites.img('bubble', 10));
+    res.querySelector('.result-art').append(t ? Sprites.img(r.tier, r.tier === 'nichion' ? 4 : r.tier === 'plankton' || r.tier === 'schooler' ? 6 : 5) : Sprites.img('hourglass', 6));
     form.replaceWith(res);
     hint.remove();
 
@@ -413,10 +477,10 @@ document.addEventListener('DOMContentLoaded', function () {
       const t = tierBy[g.tier];
       const row = h(`<li class="guess-row" style="--tc:${tierColor(g.tier)};animation-delay:${200 + i * 80}ms">
         <div></div>
-        <div><div class="q">P${i + 1} · ${esc(g.prompt)}</div><div class="a">${esc(g.guess)}${g.corrected && g.matched ? ` <small>→ ${esc(g.matched)}</small>` : ''}</div></div>
-        <div class="p">+${g.points}<small>${t ? esc(t.name).toUpperCase() : 'MISS'}</small></div>
+        <div><div class="q">P${i + 1} · ${esc(g.prompt)}</div><div class="a">${g.timedOut ? '<span class="muted">Time ran out</span>' : esc(g.guess)}${g.corrected && g.matched ? ` <small>→ ${esc(g.matched)}</small>` : ''}</div>${g.misses && g.misses.length ? `<div class="q">${g.misses.length} miss${g.misses.length === 1 ? '' : 'es'} first</div>` : ''}</div>
+        <div class="p">+${g.points}<small>${t ? esc(t.name).toUpperCase() : 'TIME’S UP'}</small></div>
       </li>`);
-      row.firstElementChild.replaceWith(Sprites.img(t ? g.tier : 'bubble', t ? 3 : 6));
+      row.firstElementChild.replaceWith(Sprites.img(t ? g.tier : 'hourglass', 3));
       list.append(row);
     });
 
@@ -499,7 +563,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const sec = h(`<div class="section px-box y-prompt" style="--tc:${tierColor(g?.tier)}">
         <div class="kicker">PROMPT ${pr.index + 1}</div>
         <h4>${esc(pr.text)}</h4>
-        ${g ? `<p class="y-you">You said <b>“${esc(g.guess)}”</b> — ${gt ? `${esc(gt.name)}, +${g.points}` : 'no catch'}</p>` : '<p class="y-you">You didn’t answer this one.</p>'}
+        ${g ? (gt ? `<p class="y-you">You said <b>“${esc(g.guess)}”</b> — ${esc(gt.name)}, +${g.points}</p>` : '<p class="y-you">Your time ran out on this one.</p>') : '<p class="y-you">You didn’t answer this one.</p>'}
         <div class="y-tiers"></div>
       </div>`);
       const wrap = sec.querySelector('.y-tiers');

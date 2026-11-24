@@ -2,7 +2,7 @@
 
 A daily pixel-art ocean guessing game in **one HTML file**: [`nichion.html`](nichion.html). There's no server and no install. Open it in any browser, or share it the way you'd share any file.
 
-Each day has up to **five prompts**, and you get **one guess** per prompt. Common answers keep you in the shallows. Rarer answers sink your sub deeper and score more points.
+Each day has up to **five prompts**, with **25 seconds** for each. Keep typing until you hit an answer that's on the board; wrong answers just say "not on the board, try again". Common answers keep you in the shallows. Rarer answers sink your sub deeper and score more points. If time runs out, you score 0 for that prompt.
 
 | Tier | Depth | Points |
 |---|---|---|
@@ -41,7 +41,7 @@ The file ships with sample prompts for Nov 22–25, 2026. Replace them with your
 A single file has no server to keep secrets on, so Nichion does what a standalone file can:
 
 - **Answers are scrambled inside the file.** Viewing the page source or searching it won't show answers or future prompts. A prompt's text only appears when you reach it, and the full answer sheet only shows the next day.
-- **One guess per prompt, saved before the result is shown.** Reloading the page doesn't give you another try.
+- **The first valid answer locks in, and the 25-second clock runs on real time.** Reloading the page or leaving the prompt doesn't pause the clock or allow a second answer. An answer typed after time is up doesn't count.
 - **Clock check.** Each browser remembers the latest day it has seen. If the device's date is turned back, play stops until the date is right again. If someone moves their clock forward to peek at tomorrow, that day is recorded as played, so they can't replay it when it really arrives.
 - **The admin panel is password-protected.** Only a salted hash of the password is stored.
 

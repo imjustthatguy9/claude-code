@@ -33,22 +33,61 @@ test('state only reveals the current prompt', () => {
   assert.ok(!JSON.stringify(s).includes('Durian'));
 });
 
-test('one guess per prompt, in order, saved', () => {
+test('wrong answers are rejected without ending the prompt', () => {
   const { g, store } = make({ '2026-03-10': 3 });
   const D = '2026-03-10';
-  assert.equal(g.guess({ date: D, index: 0, guess: 'duriam' }).tier, 'nichion');
+  let r = g.guess({ date: D, index: 0, guess: 'banana' });
+  assert.equal(r.invalid, true);
+  assert.deepEqual(r.misses, ['banana']);
+  r = g.guess({ date: D, index: 0, guess: 'BANANA' });
+  assert.equal(r.repeat, true, 'same miss twice is flagged, not stored twice');
+  assert.equal(r.misses.length, 1);
+  const hit = g.guess({ date: D, index: 0, guess: 'duriam' });
+  assert.equal(hit.tier, 'nichion');
+  assert.deepEqual(hit.misses, ['banana']);
   assert.throws(() => g.guess({ date: D, index: 0, guess: 'apple' }), { code: 'out_of_order' });
   assert.throws(() => g.guess({ date: D, index: 2, guess: 'apple' }), { code: 'out_of_order' });
   assert.throws(() => g.guess({ date: '2026-03-11', index: 1, guess: 'apple' }), { code: 'day_changed' });
-  g.guess({ date: D, index: 1, guess: 'nope' });
+  g.guess({ date: D, index: 1, guess: 'apple' });
   g.guess({ date: D, index: 2, guess: 'grapes' });
   assert.throws(() => g.guess({ date: D, index: 3, guess: 'apple' }), { code: 'done' });
-  // A fresh Game on the same storage (page reload) sees the finished day.
-  const again = new E.Game(g.data, store, g.now);
+  const again = new E.Game(g.data, store, g.now);   // page reload
   const s = again.state();
   assert.equal(s.play.done, true);
-  assert.equal(s.play.score, 130);
+  assert.equal(s.play.score, 140);
   assert.equal(s.stats.streak, 1);
+});
+
+test('25-second limit per prompt, and reloading does not pause it', () => {
+  const store = memStore();
+  const salt = 's', D = '2026-03-10';
+  const data = { salt, days: { [D]: E.encodeDay(salt, D, day(2)) } };
+  let t = new Date(2026, 2, 10, 12).getTime();
+  const g = new E.Game(data, store, () => new Date(t));
+  const deadline = g.start({ date: D, index: 0 });
+  assert.equal(deadline - t, 25000);
+  t += 10000;
+  assert.throws(() => g.timeUp({ date: D, index: 0 }), { code: 'not_yet' });
+  g.guess({ date: D, index: 0, guess: 'kiwi' });           // miss, still open
+  t += 16000;                                              // 26s in
+  const late = g.guess({ date: D, index: 0, guess: 'apple' });
+  assert.equal(late.timedOut, true, 'a right answer after time is up does not count');
+  assert.equal(late.points, 0);
+  assert.deepEqual(late.misses, ['kiwi']);
+  // Next prompt: start it, "reload" 30s later — it has expired on its own.
+  g.start({ date: D, index: 1 });
+  t += 30000;
+  const reloaded = new E.Game(data, store, () => new Date(t));
+  const s = reloaded.state();
+  assert.equal(s.play.done, true);
+  assert.equal(s.play.guesses[1].timedOut, true);
+  // Restarting the clock for an already-started prompt keeps the original deadline.
+  const st = memStore();
+  let t2 = new Date(2026, 2, 10, 12).getTime();
+  const g2 = new E.Game(data, st, () => new Date(t2));
+  const d1 = g2.start({ date: D, index: 0 });
+  t2 += 5000;
+  assert.equal(new E.Game(data, st, () => new Date(t2)).start({ date: D, index: 0 }), d1);
 });
 
 test('turning the clock back is detected', () => {

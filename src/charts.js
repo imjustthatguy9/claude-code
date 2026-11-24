@@ -14,8 +14,8 @@
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   function tipFor(g, tier, extra = '') {
-    const label = tier ? tier.name : 'No catch';
-    return `<b>P${g.index + 1}</b> ${esc(g.prompt)}<br>“${esc(g.guess)}” → ${esc(label)}<br>+${g.points} pts · ↓${g.depth}m${extra}`;
+    const said = g.timedOut || !tier ? 'Time ran out' : `“${esc(g.guess)}” → ${esc(tier.name)}`;
+    return `<b>P${g.index + 1}</b> ${esc(g.prompt)}<br>${said}<br>+${g.points} pts · ↓${g.depth}m${extra}`;
   }
 
   /** Points per prompt: one bar per guess, 0–100 scale. */

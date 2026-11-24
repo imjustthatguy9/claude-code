@@ -16,6 +16,9 @@
   const TIER_BY_KEY = Object.fromEntries(TIERS.map(t => [t.key, t]));
   const MAX_PROMPTS = 5;
   const MAX_GUESS_LEN = 60;
+  const TIME_LIMIT_MS = 25000;   // per prompt
+  const GRACE_MS = 750;          // a guess typed in the last instant still counts
+  const MAX_MISSES = 60;
 
   // --------------------------------------------------------------- matching
   // Admin answer lines: "New York City | NYC | Big Apple" — first is shown.
@@ -261,37 +264,101 @@
         const all = this.prompts(date);
         for (let i = 0; i < total && i <= answered; i++) prompts.push({ index: i, text: (play.guesses[i] && play.guesses[i].prompt) || all[i].text });
       }
+      const started = play.started && play.started[answered];
       return {
         date, total, done, prompts,
         current: done ? null : answered,
+        deadline: !done && started ? started + TIME_LIMIT_MS : null,
+        misses: (!done && play.misses && play.misses[answered]) || [],
         score: play.guesses.reduce((s, g) => s + g.points, 0),
         maxScore: total * 100,
         guesses: play.guesses.slice(),
       };
     }
 
-    guess({ date, index, guess }) {
+    _todayPlay(date) {
       const today = this.today();
       if (this.clockProblem()) throw new GuessError('clock', 'Your device clock looks like it went backwards.');
       if (date !== today) throw new GuessError('day_changed', 'A new day has started — reload to dive again.');
       const prompts = this.prompts(today);
       if (!prompts.length) throw new GuessError('no_prompts', 'There are no prompts today.');
-      const text = typeof guess === 'string' ? guess.trim().replace(/\s+/g, ' ') : '';
-      if (!text) throw new GuessError('empty', 'Type an answer first.');
-      if (text.length > MAX_GUESS_LEN) throw new GuessError('too_long', `Keep it under ${MAX_GUESS_LEN} characters.`);
       const play = this.save.plays[today] || (this.save.plays[today] = { guesses: [] });
+      play.started = play.started || {};
+      play.misses = play.misses || {};
       if (play.guesses.length >= prompts.length) throw new GuessError('done', 'You already finished today’s dive.');
-      if (index !== play.guesses.length) throw new GuessError('out_of_order', 'That prompt was already answered.');
-      const m = matchGuess(text, prompts[index].answers);
-      const tier = m ? TIER_BY_KEY[m.tier] : null;
+      return { play, prompts };
+    }
+
+    _expired(play, index, slack = GRACE_MS) {
+      const s = play.started && play.started[index];
+      if (!s) return false;
+      const now = +this.now();
+      // Turning the clock back mid-prompt also ends it.
+      return now > s + TIME_LIMIT_MS + slack || now < s - 2000;
+    }
+
+    _record(play, prompts, index, fields) {
       const rec = {
-        index, prompt: prompts[index].text, guess: text,
-        tier: tier ? tier.key : null, matched: m ? m.display : null, corrected: !!(m && m.corrected),
-        points: tier ? tier.points : 0, depth: tier ? tier.depth : 0,
+        index, prompt: prompts[index].text, guess: '', tier: null, matched: null, corrected: false,
+        points: 0, depth: 0, timedOut: false, misses: (play.misses[index] || []).slice(), ...fields,
       };
       play.guesses.push(rec);
       this.persist();
       return rec;
+    }
+
+    /** Start (or resume) the 25-second clock for a prompt. Returns the deadline (ms). */
+    start({ date, index }) {
+      const { play } = this._todayPlay(date);
+      if (index !== play.guesses.length) throw new GuessError('out_of_order', 'That prompt was already answered.');
+      if (!play.started[index]) { play.started[index] = +this.now(); this.persist(); }
+      return play.started[index] + TIME_LIMIT_MS;
+    }
+
+    /** Ends today's current prompt with 0 points if its time has run out. */
+    expireIfNeeded() {
+      const today = this.today();
+      const play = this.save.plays[today];
+      if (!play || !play.started) return null;
+      const index = play.guesses.length;
+      if (index >= this.count(today) || !this._expired(play, index)) return null;
+      return this._record(play, this.prompts(today), index, { timedOut: true });
+    }
+
+    /** Called by the UI when the countdown hits zero. */
+    timeUp({ date, index }) {
+      const { play, prompts } = this._todayPlay(date);
+      if (index !== play.guesses.length) throw new GuessError('out_of_order', 'That prompt was already answered.');
+      if (!this._expired(play, index, -GRACE_MS)) throw new GuessError('not_yet', 'There’s still time left.');
+      return this._record(play, prompts, index, { timedOut: true });
+    }
+
+    /**
+     * Try an answer. Not on the board → { invalid: true } and the prompt stays
+     * open (until the time runs out). On the board → the prompt is scored.
+     */
+    guess({ date, index, guess }) {
+      const { play, prompts } = this._todayPlay(date);
+      if (index !== play.guesses.length) throw new GuessError('out_of_order', 'That prompt was already answered.');
+      const text = typeof guess === 'string' ? guess.trim().replace(/\s+/g, ' ') : '';
+      if (!text) throw new GuessError('empty', 'Type an answer first.');
+      if (text.length > MAX_GUESS_LEN) throw new GuessError('too_long', `Keep it under ${MAX_GUESS_LEN} characters.`);
+      if (!play.started[index]) play.started[index] = +this.now();
+      if (this._expired(play, index)) return this._record(play, prompts, index, { timedOut: true });
+
+      const m = matchGuess(text, prompts[index].answers);
+      if (!m) {
+        const misses = play.misses[index] || (play.misses[index] = []);
+        const repeat = misses.some(x => normalize(x) === normalize(text));
+        if (!repeat && misses.length < MAX_MISSES) misses.push(text);
+        this.persist();
+        return { invalid: true, repeat, index, guess: text, misses: misses.slice() };
+      }
+      const tier = TIER_BY_KEY[m.tier];
+      return this._record(play, prompts, index, {
+        guess: text, tier: tier.key, matched: m.display, corrected: m.corrected,
+        points: tier.points, depth: tier.depth,
+      });
     }
 
     /** Completed-day streaks; days with no prompts are skipped, today only counts once done. */
@@ -313,6 +380,7 @@
 
     state() {
       const today = this.today();
+      if (!this.clockProblem()) this.expireIfNeeded();
       return {
         today,
         clockProblem: this.clockProblem(),
@@ -339,7 +407,7 @@
   }
 
   const api = {
-    TIERS, TIER_BY_KEY, MAX_PROMPTS, normalize, keys, editDistance, allowedTypos, matchGuess, parseAnswer,
+    TIERS, TIER_BY_KEY, MAX_PROMPTS, TIME_LIMIT_MS, normalize, keys, editDistance, allowedTypos, matchGuess, parseAnswer,
     findDuplicates, singularize, localDate, addDays, isDate, encodeDay, decodeDay, cleanPrompts, sha256,
     makeStorage, Game, GuessError,
   };

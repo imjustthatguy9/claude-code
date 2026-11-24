@@ -195,6 +195,23 @@
       ],
     },
 
+    hourglass: {
+      pal: { o: '#9a6a1c', O: '#e0a63a', W: '#cfefff', S: '#ffd23f', k: '#0b1426' },
+      rows: [
+        'OOOOOOOOO',
+        '.oWWWWWo.',
+        '.oSSSSSo.',
+        '..oSSSo..',
+        '...oSo...',
+        '....S....',
+        '...oSo...',
+        '..oWSWo..',
+        '.oWSSSWo.',
+        '.oSSSSSo.',
+        'OOOOOOOOO',
+      ],
+    },
+
     bubble: {
       pal: { b: '#c8f6ff', w: W },
       rows: [
