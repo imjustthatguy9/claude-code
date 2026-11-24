@@ -1,7 +1,7 @@
 {
   "name": "Fun Party Games",
   "short_name": "Party Games",
-  "start_url": "./fun-party-games.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

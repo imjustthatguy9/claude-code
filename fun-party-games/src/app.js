@@ -834,9 +834,17 @@ home();
 
 // Offline support: once opened over https (or localhost), keep a copy on the
 // device so the game also opens with no connection, e.g. from the Home Screen.
+// Add ?reset to the address to throw away the saved copy and start fresh.
 try {
   const servable = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
   if ('serviceWorker' in navigator && servable && window.top === window.self) {
-    navigator.serviceWorker.register('sw.js').catch(() => { /* offline copy is optional */ });
+    if (/[?&]reset/.test(location.search)) {
+      Promise.all([
+        navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.map(r => r.unregister()))),
+        window.caches ? caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k)))) : null,
+      ]).catch(() => {}).then(() => location.replace(location.pathname));
+    } else {
+      navigator.serviceWorker.register('sw.js').catch(() => { /* offline copy is optional */ });
+    }
   }
 } catch (e) { /* not available here */ }

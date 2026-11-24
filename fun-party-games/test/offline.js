@@ -10,7 +10,10 @@ const { chromium, devices } = require('playwright');
 
 const ROOT = path.join(__dirname, '..');
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.webmanifest': 'application/manifest+json', '.png': 'image/png' };
+let mode = 'ok';   // 'ok' | 'hang' (accept the request, never answer)
+const hung = [];
 const server = http.createServer((req, res) => {
+  if (mode === 'hang') { hung.push(res); return; }
   let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
   if (p.endsWith('/')) p += 'index.html';
   const file = path.join(ROOT, p);
@@ -36,10 +39,31 @@ const server = http.createServer((req, res) => {
   assert.strictEqual(manifest.display, 'standalone');
   assert.ok(await page.locator('link[rel="apple-touch-icon"]').count(), 'has a Home Screen icon');
 
+  console.log('• connection that hangs and never answers');
+  mode = 'hang';
+  const t0 = Date.now();
+  await page.goto(base, { waitUntil: 'commit', timeout: 15000 });
+  await page.waitForSelector('.logo', { timeout: 10000 });
+  const waited = Date.now() - t0;
+  assert.ok(waited < 8000, 'falls back to the saved copy quickly, not stuck: ' + waited + 'ms');
+  console.log('  opened from the saved copy after ' + waited + 'ms');
+  mode = 'ok';
+  hung.forEach(r => r.socket && r.socket.destroy());   // let the stuck test connections go
+
+  console.log('• ?reset clears the saved copy');
+  await page.evaluate(() => caches.open('stale-test').then(c => c.put('/stale', new Response('old'))));
+  await page.goto(base + '?reset');
+  await page.waitForFunction(() => !location.search.includes('reset') && document.querySelector('.logo'), null, { timeout: 10000 });
+  assert.ok(!(await page.evaluate(() => caches.has('stale-test'))), 'old saved copies were thrown away');
+  // The clean reload saves a fresh copy for the offline part.
+  await page.waitForFunction(() => navigator.serviceWorker.controller, null, { timeout: 10000 })
+    .catch(async () => { await page.reload(); await page.waitForFunction(() => navigator.serviceWorker.controller, null, { timeout: 10000 }); });
+  await page.waitForFunction(async () => (await caches.keys()).length > 0, null, { timeout: 10000 });
+
   console.log('• no connection');
   server.close();
   await ctx.setOffline(true);
-  for (const url of ['fun-party-games.html', '', 'fun-party-games.html?source=homescreen']) {
+  for (const url of ['fun-party-games.html', '', 'index.html', '?source=homescreen']) {
     await page.goto(base + url);
     await page.waitForSelector('.logo', { timeout: 5000 });
   }
