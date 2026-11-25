@@ -2,7 +2,7 @@
 
 A daily pixel-art ocean guessing game in **one HTML file**: [`nichion.html`](nichion.html). There's no server and no install. Open it in any browser, or share it the way you'd share any file.
 
-Each day has up to **five prompts**, with **25 seconds** for each. Keep typing until you hit an answer that's on the board; wrong answers just say "not on the board, try again". Common answers keep you in the shallows. Rarer answers sink your sub deeper and score more points. If time runs out, you score 0 for that prompt.
+Each day has **3 prompts** by default (the admin can change it to anything from 1 to 5), with **25 seconds** for each. Keep typing until you hit an answer that's on the board; wrong answers just say "not on the board, try again". Common answers keep you in the shallows. Rarer answers sink your sub deeper and score more points. If time runs out, you score 0 for that prompt.
 
 | Tier | Depth | Points |
 |---|---|---|
@@ -17,7 +17,7 @@ Each day has up to **five prompts**, with **25 seconds** for each. Keep typing u
 
 1. Open `nichion.html`. Tap **?** and choose **Admin: edit prompts**, or add `#admin` to the end of the address.
 2. The first time, you choose an admin password. It's saved into every game file you download from then on.
-3. Pick a day on the calendar and add 1–5 prompts. Each prompt has a box for each tier, with **one answer per line**. Extra accepted spellings go after a bar: `New York City | NYC | Big Apple`. Players see the first spelling.
+3. Pick a day on the calendar and add its prompts (3 by default). Each prompt has a box for each tier, with **one answer per line**. Extra accepted spellings go after a bar: `New York City | NYC | Big Apple`. Players see the first spelling.
 4. **Reuse old prompts.** The **Past prompts** list under the calendar shows every prompt from other days. You can search it (by prompt or answer) and filter it by Past / Upcoming / All. Open one to see its answers, then paste it into a prompt slot or add it as a new prompt. Each prompt also has a **📋 Past** button that pastes straight into that slot. Pasted prompts can be edited like any other.
 5. **Paste as text.** Use **📝 Text** on a prompt or **📝 Paste as text** under the prompts, or paste a whole block straight into a question box. The format:
 
@@ -43,7 +43,7 @@ Each day has up to **five prompts**, with **25 seconds** for each. Keep typing u
 8. Press **Save Day**. This keeps your edits in your browser.
 9. Press **Download game file** to get a new `nichion.html` with all your prompts inside it. **Share that file.** Players only see changes once they have the new file.
 
-The **More** menu has: back up / restore prompts as JSON, change password, reset your own plays (for testing), and discard edits.
+The **More** menu has: **prompts per day** (default 3, up to 5; this sets what a full day is), plus back up / restore prompts as JSON, change password, reset your own plays (for testing), and discard edits.
 
 The file ships with sample prompts for Nov 22–25, 2026. Replace them with your own.
 
@@ -51,7 +51,7 @@ The file ships with sample prompts for Nov 22–25, 2026. Replace them with your
 
 - A day runs from each player's own local midnight to the next.
 - The bar at the top shows one square per prompt and which prompt you're on. Each answer gets a **Next** button.
-- The results page shows your score, a points-per-prompt chart, a dive-depth chart and your guesses. On days with fewer than 5 prompts it adds "(out of N questions today)" under the score.
+- The results page shows your score, a points-per-prompt chart, a dive-depth chart and your guesses. On days with fewer prompts than the per-day setting it adds "(out of N questions today)" under the score.
 - Your current streak, best streak, number of dives and best score are kept. Days with no prompts don't break a streak.
 - **Yesterday's depths** lists every answer in every tier for the day before.
 - After finishing, a **Come back tomorrow** card with a countdown shows when today's best guesses unlock. It appears under your stats on the results page and on the home screen.

@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function helpModal() {
     const node = h(`<div>
       <h2>HOW TO DIVE</h2>
-      <p>Every day there are up to <b>five prompts</b>, and you get <b>25 seconds</b> for each.</p>
+      <p>Every day there are <b>${S.perDay} prompt${S.perDay === 1 ? '' : 's'}</b>, and you get <b>25 seconds</b> for each.</p>
       <p>Type answers until you hit one that’s on the board. Common answers keep you in the shallows; <b>rarer answers sink you deeper</b> and score more. Run out of time and you stay put.</p>
       <div class="tier-legend" style="margin:16px 0"></div>
       <p>Small typos are forgiven — the sonar auto-corrects answers that are close.</p>
@@ -468,7 +468,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="rank">${esc(rank)}</div>
         <div class="big-score"><span data-count>0</span><small>PTS</small></div>
         <div class="score-sub">↓ ${depthSoFar()}M DEEP · MAX ${max}</div>
-        ${p.total < 5 ? `<p class="footnote">(out of ${p.total} question${p.total === 1 ? '' : 's'} today)</p>` : ''}
+        ${p.total < S.perDay ? `<p class="footnote">(out of ${p.total} question${p.total === 1 ? '' : 's'} today)</p>` : ''}
         <div class="share-row">
           <button class="btn small" data-share>SHARE</button>
           <button class="btn small blue" data-y>YESTERDAY</button>
@@ -550,7 +550,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const text = [
       `NICHION · ${fmtDate(S.today, { month: 'short', day: 'numeric' })}`,
       p.guesses.map(g => EMOJI[g.tier || 'miss']).join(''),
-      `↓${depthSoFar()}m · ${p.score} pts${p.total < 5 ? ` (out of ${p.total})` : ''}`,
+      `↓${depthSoFar()}m · ${p.score} pts${p.total < S.perDay ? ` (out of ${p.total})` : ''}`,
       location.origin,
     ].join('\n');
     try {

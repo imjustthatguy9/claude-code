@@ -119,3 +119,12 @@ test('sha256 matches known vectors', () => {
   assert.equal(E.sha256('abc'), 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
   assert.equal(E.sha256(''), 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
 });
+
+test('a day is 3 prompts by default; the file can change it', () => {
+  assert.equal(E.DEFAULT_PER_DAY, 3);
+  assert.equal(E.perDayOf({}), 3);
+  assert.equal(E.perDayOf({ perDay: 5 }), 5);
+  assert.equal(E.perDayOf({ perDay: 9 }), 5, 'never more than 5');
+  const { g } = make({ '2026-03-10': 2 });
+  assert.equal(g.state().perDay, 3);
+});

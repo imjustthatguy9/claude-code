@@ -9,7 +9,6 @@
   const BOOK_KEY = 'nichion_admin_book_v1';
   const SESSION_KEY = 'nichion_admin_session';
   const tiers = E.TIERS;
-  const MAXP = E.MAX_PROMPTS;
 
   let root, DATA, PRISTINE, onExit;
   let book = null;          // { salt, admin:{salt,hash}|null, days:{date: prompts}, fileStamp, dirty, savedAt }
@@ -17,6 +16,7 @@
   let libFilter = 'past', libQuery = '';
   let draft = null, saved = '';
   const today = () => E.localDate();
+  const perDay = () => E.perDayOf(book);
 
   function toast(msg, kind = '') {
     const t = document.getElementById('toast');
@@ -33,7 +33,7 @@
   function bookFromFile() {
     const days = {};
     for (const d of Object.keys(DATA.days || {})) days[d] = E.decodeDay(DATA.salt, d, DATA.days[d]);
-    return { salt: DATA.salt, admin: DATA.admin || null, days, fileStamp: DATA.stamp, dirty: false };
+    return { salt: DATA.salt, admin: DATA.admin || null, perDay: E.perDayOf(DATA), days, fileStamp: DATA.stamp, dirty: false };
   }
   function storeBook() { try { localStorage.setItem(BOOK_KEY, JSON.stringify(book)); } catch {} }
   function loadStoredBook() { try { return JSON.parse(localStorage.getItem(BOOK_KEY) || 'null'); } catch { return null; } }
@@ -54,7 +54,7 @@
     const stamp = randomId();
     const days = {};
     for (const [d, prompts] of Object.entries(book.days)) if (prompts.length) days[d] = E.encodeDay(book.salt, d, prompts);
-    const data = { v: 1, stamp, salt: book.salt, admin: book.admin, days };
+    const data = { v: 1, stamp, salt: book.salt, admin: book.admin, perDay: perDay(), days };
     const json = JSON.stringify(data);
     const re = new RegExp('(<script id="nichion-' + 'data" type="application/json">)[\\s\\S]*?(</' + 'script>)');
     return { stamp, html: PRISTINE.replace(re, (_, a, b) => a + json + b) };
@@ -128,7 +128,7 @@
     renderTop();
     month = today().slice(0, 7);
     let d = E.addDays(today(), 1);
-    for (let i = 0; i < 60 && count(d) >= MAXP; i++) d = E.addDays(d, 1);
+    for (let i = 0; i < 60 && count(d) >= perDay(); i++) d = E.addDays(d, 1);
     selectDay(d, true);
   }
 
@@ -153,6 +153,9 @@
     const box = h(`<div class="modal-backdrop"><div class="modal px-box" role="dialog" aria-modal="true" aria-label="More admin tools">
       <h2>ADMIN TOOLS</h2>
       <div class="title-actions">
+        <label class="perday-row">PROMPTS PER DAY
+          <select data-perday>${[1, 2, 3, 4, 5].map(n => `<option value="${n}" ${n === perDay() ? 'selected' : ''}>${n}${n === E.DEFAULT_PER_DAY ? ' (default)' : ''}</option>`).join('')}</select>
+        </label>
         <button class="btn wide ghost" data-a="export">BACK UP PROMPTS (.JSON)</button>
         <label class="btn wide ghost" tabindex="0">RESTORE / IMPORT .JSON<input type="file" accept="application/json,.json" hidden></label>
         <button class="btn wide ghost" data-a="pw">CHANGE PASSWORD</button>
@@ -181,6 +184,12 @@
         book.dirty = true; book.savedAt = Date.now(); storeBook();
         close(); toast(`Imported ${n} day(s)`); renderTop(); selectDay(selected, true);
       } catch (e) { toast('That file isn’t a Nichion backup.', 'error'); }
+    });
+    box.querySelector('[data-perday]').addEventListener('change', e => {
+      book.perDay = Number(e.target.value);
+      book.dirty = true; storeBook();
+      renderTop(); renderCalendar(); renderEditor();
+      toast(`A full day is now ${book.perDay} prompt${book.perDay === 1 ? '' : 's'} — download the game file to apply it`);
     });
     box.querySelector('[data-a="export"]').addEventListener('click', () => {
       const blob = new Blob([JSON.stringify({ v: 1, exportedAt: new Date().toISOString(), days: book.days }, null, 2)], { type: 'application/json' });
@@ -239,8 +248,8 @@
       if (d < t) cls.push('past');
       if (d === t) cls.push('today');
       if (d === selected) cls.push('sel');
-      if (n >= MAXP) cls.push('full');
-      const dots = Array.from({ length: MAXP }, (_, k) => `<i class="${k < n ? '' : 'off'}"></i>`).join('');
+      if (n >= perDay()) cls.push('full');
+      const dots = Array.from({ length: perDay() }, (_, k) => `<i class="${k < n ? '' : 'off'}"></i>`).join('');
       const b = h(`<button class="${cls.join(' ')}" aria-label="${esc(fmt(d))}: ${n} prompt${n === 1 ? '' : 's'}${d === t ? ' (today)' : ''}"><span>${+d.slice(8)}</span><span class="dots">${dots}</span></button>`);
       b.addEventListener('click', () => selectDay(d));
       grid.append(b);
@@ -249,7 +258,7 @@
     const missing = [];
     for (let i = 0; i < 7; i++) { const d = E.addDays(t, i); if (!count(d)) missing.push(d); }
     cal.append(h(`<div class="cal-legend">
-      <span><i style="background:var(--t-nichion)"></i>Full day (${MAXP} prompts)</span>
+      <span><i style="background:var(--t-nichion)"></i>Full day (${perDay()} prompts)</span>
       <span><i style="background:var(--t-plankton)"></i>Some prompts set</span>
       <span><i style="box-shadow:inset 0 0 0 3px var(--accent)"></i>Today · days start at each player’s local midnight</span>
     </div>`));
@@ -290,7 +299,7 @@
         <h2>${esc(fmt(selected).toUpperCase())}</h2>
         <div class="ed-meta">
           <span class="tag ${isToday ? 'live' : isPast ? 'past' : 'future'}">${isToday ? 'TODAY' : isPast ? 'PAST' : 'UPCOMING'}</span>
-          <span>${draft.length}/${MAXP} prompts</span>
+          <span>${draft.length}/${perDay()} prompts</span>
           <span class="tag dirty" data-dirty hidden>UNSAVED</span>
         </div>
       </div>
@@ -304,6 +313,9 @@
     head.querySelector('[data-revert]').addEventListener('click', () => { draft = JSON.parse(saved); renderEditor(); });
     ed.append(head);
 
+    if (draft.length > perDay()) {
+      ed.append(h(`<div class="help px-box dim">This day has <b>${draft.length}</b> prompts — more than the ${perDay()}-per-day setting. Players will still get all ${draft.length}; delete some to match the others.</div>`));
+    }
     if (lastCleanup) {
       const note = h(`<div class="cleanup-note px-box dim" role="status">
         <div class="cleanup-head"><b>✂ CLEANED UP ${lastCleanup.items.length} DUPLICATE${lastCleanup.items.length === 1 ? '' : 'S'}</b><button class="icon-btn" aria-label="Dismiss">✕</button></div>
@@ -323,7 +335,7 @@
       ed.append(e);
     }
     draft.forEach((p, i) => ed.append(promptCard(p, i)));
-    if (draft.length < MAXP) {
+    if (draft.length < perDay()) {
       const add = h(`<div class="add-row"><button class="btn blue" data-add>+ ADD PROMPT ${draft.length + 1}</button><button class="btn ghost" data-addtext>📝 PASTE AS TEXT</button></div>`);
       add.querySelector('[data-add]').addEventListener('click', () => {
         draft.push(blankPrompt());
@@ -342,7 +354,7 @@
         <li><b>📝 Paste as text:</b> question on the first line, a blank line, then answer groups deepest first (Nichion, Deep Cut, Rare, Schooler, Too Clever, Plankton), with a blank line between groups. Pasting that straight into a question box works too.</li>
         <li><b>Duplicates are cleaned up for you.</b> If the same answer (or a near-identical spelling, plural or typo) is in more than one tier, the deepest tier keeps it and the others are removed when you save.</li>
         <li><b>Descriptions:</b> add <code>*(…)</code> after a Nichion or Too Clever answer, like <code>cat *(feline friend)</code>. Players see it when they land that answer and on the next day’s answer sheet.</li>
-        <li>Anything not listed scores 0. A day with fewer than ${MAXP} prompts still works; the score page notes “(out of N questions today)”.</li>
+        <li>Anything not listed scores 0. A day with fewer than ${perDay()} prompts still works; the score page notes “(out of N questions today)”.</li>
         <li><b>Save Day</b> keeps your edits in this browser. <b>Download game file</b> makes a new <code>nichion.html</code> with everything inside it; share that file.</li>
       </ul>
     </div>`));
@@ -560,7 +572,7 @@
       btn(`PASTE INTO PROMPT ${target + 1}`, '', () => paste(p, target, date, onPasted));
     } else {
       draft.forEach((_, k) => btn(`INTO P${k + 1}`, 'ghost', () => paste(p, k, date, onPasted)));
-      if (draft.length < MAXP) btn('+ NEW PROMPT', '', () => paste(p, draft.length, date, onPasted));
+      if (draft.length < perDay()) btn('+ NEW PROMPT', '', () => paste(p, draft.length, date, onPasted));
     }
     return item;
   }
@@ -617,9 +629,9 @@
 
   /** Put parsed questions into the day, starting at slot `start`. Returns false if cancelled. */
   function applyParsed(qs, start) {
-    const room = MAXP - start;
+    const room = perDay() - start;
     const use = qs.slice(0, Math.max(0, room));
-    if (!use.length) { toast(`This day already has ${MAXP} prompts`, 'error'); return false; }
+    if (!use.length) { toast(`This day already has ${perDay()} prompts`, 'error'); return false; }
     const overwrite = use.map((_, k) => start + k).filter(k => {
       const d = draft[k];
       return d && (d.text.trim() || Object.values(d.answers).some(v => v.trim()));
@@ -671,7 +683,7 @@
     const paint = () => {
       parsed = E.parseQuestionText(ta.value).filter(q => q.text);
       prev.innerHTML = '';
-      const room = MAXP - start;
+      const room = perDay() - start;
       parsed.forEach((q, k) => {
         const slot = start + k;
         const fits = k < room;
@@ -690,7 +702,7 @@
         for (const n of q.notes || []) card.append(h(`<p class="pv-note">✂ ${esc(n)}</p>`));
         prev.append(card);
       });
-      if (parsed.length > room) prev.append(h(`<p class="pv-warn">⚠ A day holds ${MAXP} prompts — only the first ${Math.max(0, room)} will be used.</p>`));
+      if (parsed.length > room) prev.append(h(`<p class="pv-warn">⚠ A day holds ${perDay()} prompts — only the first ${Math.max(0, room)} will be used.</p>`));
       const n = Math.min(parsed.length, Math.max(0, room));
       apply.disabled = !n;
       apply.textContent = !n ? 'FILL' : n === 1 ? (start < draft.length ? `FILL PROMPT ${start + 1}` : 'ADD AS NEW PROMPT') : `FILL PROMPTS ${start + 1}–${start + n}`;

@@ -14,7 +14,9 @@
     { key: 'nichion',  name: 'Nichion',    depth: 100, points: 100 },
   ];
   const TIER_BY_KEY = Object.fromEntries(TIERS.map(t => [t.key, t]));
-  const MAX_PROMPTS = 5;
+  const MAX_PROMPTS = 5;          // hard cap per day
+  const DEFAULT_PER_DAY = 3;      // a normal day, unless the admin changes it
+  const perDayOf = data => Math.min(MAX_PROMPTS, Math.max(1, (data && data.perDay) || DEFAULT_PER_DAY));
   const MAX_GUESS_LEN = 60;
   const TIME_LIMIT_MS = 25000;   // per prompt
   const GRACE_MS = 750;          // a guess typed in the last instant still counts
@@ -616,6 +618,7 @@
         play: this.publicPlay(today),
         stats: this.stats(),
         hasYesterday: this.count(addDays(today, -1)) > 0,
+        perDay: perDayOf(this.data),
         persistent: this.storage.persistent !== false,
       };
     }
@@ -641,7 +644,7 @@
   }
 
   const api = {
-    TIERS, TIER_BY_KEY, MAX_PROMPTS, TIME_LIMIT_MS, DESC_TIERS, DESC_RE, formatAnswer, normalize, keys, editDistance, allowedTypos, matchGuess, matchDetailed, parseAnswer,
+    TIERS, TIER_BY_KEY, MAX_PROMPTS, DEFAULT_PER_DAY, perDayOf, TIME_LIMIT_MS, DESC_TIERS, DESC_RE, formatAnswer, normalize, keys, editDistance, allowedTypos, matchGuess, matchDetailed, parseAnswer,
     findDuplicates, dedupeAnswers, describeRemoval, nearDuplicate, singularize, localDate, addDays, isDate, encodeDay, decodeDay, cleanPrompts, sha256,
     makeStorage, Game, GuessError, parseQuestionText, promptToText, TEXT_ORDER,
   };
